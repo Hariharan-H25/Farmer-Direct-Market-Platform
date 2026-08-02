@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAllUsers, verifyFarmer, fetchOrders, deleteUser } from '../api';
 import { Users, Shield, Mail, Phone, Home, Image as ImageIcon, CheckCircle, Clock, Package, Trash2, Settings as SettingsIcon, Save } from 'lucide-react';
+import socket from '../socket';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
@@ -61,8 +62,25 @@ const AdminDashboard = () => {
         }
       }
     })();
-    return () => { ignore = true; };
-  }, []);
+
+    // Listen for real-time WebSocket updates
+    const handleAdminRefresh = () => {
+      loadData();
+    };
+
+    socket.on('admin_stats_updated', handleAdminRefresh);
+    socket.on('order_placed', handleAdminRefresh);
+    socket.on('farmer_verified', handleAdminRefresh);
+    socket.on('user_deleted', handleAdminRefresh);
+
+    return () => { 
+      ignore = true; 
+      socket.off('admin_stats_updated', handleAdminRefresh);
+      socket.off('order_placed', handleAdminRefresh);
+      socket.off('farmer_verified', handleAdminRefresh);
+      socket.off('user_deleted', handleAdminRefresh);
+    };
+  }, [loadData]);
 
   const handleVerify = async (id) => {
     try {

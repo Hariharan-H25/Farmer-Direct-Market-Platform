@@ -14,7 +14,18 @@ export const createOrder = async (req, res) => {
     });
 
     await newOrder.save();
-    res.status(201).json(newOrder);
+
+    const populatedOrder = await Order.findById(newOrder._id)
+      .populate('customer', 'name email')
+      .populate('items.product', 'name');
+
+    // Emit real-time WebSockets events
+    if (req.io) {
+      req.io.emit('order_placed', populatedOrder);
+      req.io.emit('admin_stats_updated');
+    }
+
+    res.status(201).json(populatedOrder);
   } catch (error) {
     res.status(409).json({ message: error.message });
   }

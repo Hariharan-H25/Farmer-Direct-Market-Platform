@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import { Search, SlidersHorizontal, ShoppingBag } from 'lucide-react';
 import { fetchProducts } from '../api';
+import socket from '../socket';
 
 const mockProducts = [
   // Vegetables
@@ -150,7 +151,21 @@ const ProductBrowse = () => {
 
     // Simple debounced trigger
     const timeoutId = setTimeout(loadProducts, 250);
-    return () => clearTimeout(timeoutId);
+
+    const handleProductChange = () => {
+      loadProducts();
+    };
+
+    socket.on('product_created', handleProductChange);
+    socket.on('product_stock_updated', handleProductChange);
+    socket.on('product_deleted', handleProductChange);
+
+    return () => {
+      clearTimeout(timeoutId);
+      socket.off('product_created', handleProductChange);
+      socket.off('product_stock_updated', handleProductChange);
+      socket.off('product_deleted', handleProductChange);
+    };
   }, [selectedCategory, searchQuery]);
 
   return (

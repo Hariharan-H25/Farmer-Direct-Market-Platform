@@ -32,7 +32,13 @@ export const createProduct = async (req, res) => {
 
   try {
     await newProduct.save();
-    res.status(201).json(newProduct);
+    const populated = await Product.findById(newProduct._id).populate('farmer', 'name farmName location');
+    
+    if (req.io) {
+      req.io.emit('product_created', populated);
+    }
+    
+    res.status(201).json(populated);
   } catch (error) {
     res.status(409).json({ message: error.message });
   }
@@ -43,7 +49,12 @@ export const updateStock = async (req, res) => {
   const { quantity } = req.body;
   if (!mongoose.Types.ObjectId.isValid(id)) return res.status(404).send('No product with that id');
   
-  const updatedProduct = await Product.findByIdAndUpdate(id, { quantity }, { new: true });
+  const updatedProduct = await Product.findByIdAndUpdate(id, { quantity }, { new: true }).populate('farmer', 'name farmName location');
+  
+  if (req.io) {
+    req.io.emit('product_stock_updated', updatedProduct);
+  }
+  
   res.json(updatedProduct);
 };
 
@@ -53,6 +64,11 @@ export const deleteProduct = async (req, res) => {
   
   try {
     await Product.findByIdAndDelete(id);
+    
+    if (req.io) {
+      req.io.emit('product_deleted', { id });
+    }
+    
     res.status(200).json({ message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

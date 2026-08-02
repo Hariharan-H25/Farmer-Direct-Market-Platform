@@ -5,6 +5,7 @@ import {
   Package, PlusCircle, Loader2 
 } from 'lucide-react';
 import { fetchProducts, createProduct, deleteProduct, updateProductStock, fetchOrders } from '../api';
+import socket from '../socket';
 
 const categoryPresets = {
   Vegetables: [
@@ -82,6 +83,8 @@ const FarmerDashboard = () => {
     }
   }, [farmerId]);
 
+  const [realtimeToast, setRealtimeToast] = useState(null);
+
   useEffect(() => {
     if (!farmerId) return;
     let ignore = false;
@@ -110,7 +113,33 @@ const FarmerDashboard = () => {
         }
       }
     })();
-    return () => { ignore = true; };
+
+    // Socket.IO real-time event listeners
+    socket.emit('join_farmer_room', farmerId);
+
+    const handleOrderPlaced = (newOrder) => {
+      const isForThisFarmer = newOrder?.items?.some(item => (item.farmer?._id || item.farmer) === farmerId);
+      if (isForThisFarmer) {
+        setOrders(prev => [newOrder, ...prev]);
+        setRealtimeToast(`🎉 New order received! Total: ₹${newOrder.totalAmount}`);
+        setTimeout(() => setRealtimeToast(null), 6000);
+      }
+    };
+
+    const handleProductStock = (updatedProduct) => {
+      if ((updatedProduct?.farmer?._id || updatedProduct?.farmer) === farmerId) {
+        setProducts(prev => prev.map(p => p._id === updatedProduct._id ? updatedProduct : p));
+      }
+    };
+
+    socket.on('order_placed', handleOrderPlaced);
+    socket.on('product_stock_updated', handleProductStock);
+
+    return () => { 
+      ignore = true; 
+      socket.off('order_placed', handleOrderPlaced);
+      socket.off('product_stock_updated', handleProductStock);
+    };
   }, [farmerId]);
 
   const handleStockUpdate = async (id, currentQty, delta) => {
@@ -173,6 +202,12 @@ const FarmerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#f8fafc]/50 p-4 md:p-10 space-y-12">
+      {realtimeToast && (
+        <div className="fixed top-20 right-8 z-50 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 font-bold border border-emerald-400">
+          <CheckCircle size={24} className="shrink-0 animate-bounce" />
+          <span>{realtimeToast}</span>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Quote Hero Banner */}

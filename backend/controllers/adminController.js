@@ -14,6 +14,12 @@ export const verifyFarmer = async (req, res) => {
   const { id } = req.params;
   try {
     const updatedUser = await User.findByIdAndUpdate(id, { isVerified: true }, { new: true });
+    
+    if (req.io) {
+      req.io.emit('farmer_verified', updatedUser);
+      req.io.emit('admin_stats_updated');
+    }
+    
     res.status(200).json(updatedUser);
   } catch (error) {
     res.status(404).json({ message: error.message });
@@ -37,6 +43,12 @@ export const deleteUser = async (req, res) => {
   const { id } = req.params;
   try {
     await User.findByIdAndDelete(id);
+    
+    if (req.io) {
+      req.io.emit('user_deleted', { id });
+      req.io.emit('admin_stats_updated');
+    }
+    
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(404).json({ message: error.message });
