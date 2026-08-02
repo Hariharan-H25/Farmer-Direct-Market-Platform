@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Menu, X, Search, User, MapPin, Phone, LogOut, Package, Heart } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
+import { signOut } from '../api';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,7 +10,12 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { totalItems } = useCart();
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await signOut();
+    } catch {
+      // Ignore API logout failures and proceed with local clearing
+    }
     localStorage.removeItem('profile');
     navigate('/login');
     window.location.reload();

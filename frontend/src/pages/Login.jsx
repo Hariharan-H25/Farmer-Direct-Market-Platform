@@ -21,6 +21,8 @@ const Login = () => {
     } catch (err) {
       if (err.code === 'ERR_NETWORK') {
         setError('Database connection error. Please ensure MongoDB is running.');
+      } else if (err.response?.status === 403) {
+        setError(err.response.data?.message || 'Access denied. Your email address is not authorized to log in.');
       } else {
         setError(err.response?.data?.message || 'Invalid credentials. Please try again.');
       }
@@ -41,9 +43,9 @@ const Login = () => {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center space-x-3 text-sm border border-red-100 animate-in fade-in zoom-in duration-300">
-            <AlertCircle size={20} className="shrink-0" />
-            <span className="font-bold">{error}</span>
+          <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-center space-x-3 text-sm border border-red-200 animate-in fade-in zoom-in duration-300">
+            <AlertCircle size={20} className="shrink-0 text-red-500" />
+            <span className="font-bold leading-relaxed">{error}</span>
           </div>
         )}
 
