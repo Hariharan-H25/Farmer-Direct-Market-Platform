@@ -1,0 +1,13 @@
+{
+  "name": "farmconnect",
+  "version": "1.0.0",
+  "dependencies": {
+    "localtunnel": "^2.0.2"
+  },
+  "scripts": {
+    "dev": "cd backend && npm run dev & cd ../frontend && npm run dev",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "tunnel": "node tunnel.js"
+  }
+}

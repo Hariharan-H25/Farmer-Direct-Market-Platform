@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --font-poppins: 'Inter', system-ui, sans-serif;
+  --font-outfit: 'Inter', system-ui, sans-serif;
+  --color-primary: #0F5A32; /* BigHaat Forest Green */
+  --color-secondary: #538766; /* BigHaat Olive Green */
+  --color-accent: #f97316; /* Discount Orange */
+  --color-dark: #1a1a1a; /* Dark footer bg */
+  --color-light-bg: #f9f9f9; /* Subtle grey background */
+}
+
+@layer base {
+  body {
+    @apply font-poppins bg-[#f9f9f9] text-[#333333] antialiased selection:bg-primary/20 selection:text-primary;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-poppins font-bold tracking-normal text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-6 py-2.5 rounded-md font-bold transition-colors hover:bg-[#0c4a29] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer;
+  }
+  
+  .btn-secondary {
+    @apply bg-white border border-gray-300 text-gray-700 px-6 py-2.5 rounded-md font-bold transition-colors hover:bg-gray-50 flex items-center justify-center gap-2 cursor-pointer;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors text-sm;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400 transition-colors;
+}
+
+/* No Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
