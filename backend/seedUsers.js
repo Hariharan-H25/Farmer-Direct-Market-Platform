@@ -11,12 +11,22 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/farmconnec
 const users = [
   // ─── Admin ────────────────────────────────────────────────
   {
+    name: 'Hariharan Admin',
+    email: 'nhariharan757@gmail.com',
+    password: 'admin123',
+    phone: '9000000000',
+    role: 'admin',
+    isVerified: true,
+    isAuthorized: true,
+  },
+  {
     name: 'Admin Kumar',
     email: 'admin@farmconnect.com',
     password: 'admin123',
     phone: '9000000001',
     role: 'admin',
     isVerified: true,
+    isAuthorized: true,
   },
 
   // ─── Farmers ──────────────────────────────────────────────
@@ -304,6 +314,7 @@ async function seedUsers() {
     console.log(`\n🎉 Product Seeding complete! Added: ${addedProducts}, Skipped: ${skippedProducts}`);
 
     console.log('\n─── Login Credentials ────────────────────────────────────');
+    console.log('ADMIN    → nhariharan757@gmail.com / admin123');
     console.log('ADMIN    → admin@farmconnect.com   / admin123');
     console.log('FARMER   → ravi@farmer.com         / farmer123');
     console.log('FARMER   → meena@farmer.com        / farmer123');
