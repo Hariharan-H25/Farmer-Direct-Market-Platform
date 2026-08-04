@@ -1,0 +1,101 @@
+name: FarmConnect CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ────────────────────────────────────────
+  # Backend CI Job
+  # ────────────────────────────────────────
+  backend-ci:
+    name: 🟢 Backend – Test & Verify
+    runs-on: ubuntu-latest
+
+    services:
+      # Spin up MongoDB for integration tests
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval \"db.adminCommand('ping')\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Syntax check – server.js
+        run: node --check server.js
+
+      - name: 🔍 Syntax check – all controllers
+        run: |
+          for f in controllers/*.js; do node --check "$f"; done
+
+      - name: 🔍 Syntax check – all routes
+        run: |
+          for f in routes/*.js; do node --check "$f"; done
+
+      - name: 🧪 Run backend tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          MONGO_URI: mongodb://localhost:27017/farmconnect_test
+          JWT_SECRET: test_jwt_secret_ci_2026
+          PORT: 5001
+
+  # ────────────────────────────────────────
+  # Frontend CI Job
+  # ────────────────────────────────────────
+  frontend-ci:
+    name: 🔵 Frontend – Build & Verify
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build production bundle
+        run: npm run build
+        env:
+          VITE_API_URL: /api
+
+      - name: 📊 Report bundle size
+        run: |
+          echo "=== Build Output ==="
+          du -sh dist/
+          echo "=== Asset Sizes ==="
+          ls -lh dist/assets/ | head -20

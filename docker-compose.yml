@@ -1,0 +1,98 @@
+version: '3.9'
+
+services:
+  # ─────────────────────────────────────
+  # MongoDB Service
+  # ─────────────────────────────────────
+  mongo:
+    image: mongo:7.0
+    container_name: farmconnect_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: farmconnect_v2
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - farmconnect_net
+
+  # ─────────────────────────────────────
+  # Backend Service (Express + Socket.io)
+  # ─────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: farmconnect_backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: mongodb://mongo:27017/farmconnect_v2
+      JWT_SECRET: ${JWT_SECRET:-farmconnect_secret_key_docker}
+      EMAIL_SERVICE: ${EMAIL_SERVICE:-gmail}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-FarmConnect <no-reply@farmconnect.com>}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      WEATHER_API_KEY: ${WEATHER_API_KEY:-}
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:80
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist uploaded product images across container restarts
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - farmconnect_net
+
+  # ─────────────────────────────────────
+  # Frontend Service (nginx + React SPA)
+  # ─────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: farmconnect_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - farmconnect_net
+
+# ─────────────────────────────────────
+# Named Volumes
+# ─────────────────────────────────────
+volumes:
+  mongo_data:
+    driver: local
+  uploads_data:
+    driver: local
+  logs_data:
+    driver: local
+
+# ─────────────────────────────────────
+# Shared Network
+# ─────────────────────────────────────
+networks:
+  farmconnect_net:
+    driver: bridge

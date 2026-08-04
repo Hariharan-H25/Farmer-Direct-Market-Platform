@@ -25,16 +25,28 @@ const orderSchema = mongoose.Schema({
   },
   deliveryStatus: { 
     type: String, 
-    enum: ['Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled'], 
-    default: 'Processing' 
+    enum: ['Pending', 'Confirmed', 'Processing', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'], 
+    default: 'Pending' 
   },
   shippingAddress: {
     address: { type: String },
     city: { type: String },
+    state: { type: String },
+    pincode: { type: String },
     phone: { type: String }
   },
-  createdAt: { type: Date, default: new Date() }
-});
+  returnReason: { type: String },
+  statusHistory: [{
+    status: { type: String },
+    updatedAt: { type: Date, default: Date.now }
+  }],
+  createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+// Performance indexes for buyer, farmer, and admin order lookups
+orderSchema.index({ customer: 1 });
+orderSchema.index({ 'items.farmer': 1 });
+orderSchema.index({ createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 

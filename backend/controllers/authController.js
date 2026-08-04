@@ -158,3 +158,47 @@ export const updateProfile = async (req, res) => {
     res.status(500).json({ message: "Failed to update user profile." });
   }
 };
+
+export const getWishlist = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).populate('wishlist');
+    if (!user) return res.status(404).json({ message: "User not found." });
+    res.status(200).json(user.wishlist || []);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch wishlist." });
+  }
+};
+
+export const addToWishlist = async (req, res) => {
+  const { productId } = req.params;
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    if (!user.wishlist.includes(productId)) {
+      user.wishlist.push(productId);
+      await user.save();
+    }
+
+    const updatedUser = await User.findById(req.userId).populate('wishlist');
+    res.status(200).json(updatedUser.wishlist);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to add to wishlist." });
+  }
+};
+
+export const removeFromWishlist = async (req, res) => {
+  const { productId } = req.params;
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
+    await user.save();
+
+    const updatedUser = await User.findById(req.userId).populate('wishlist');
+    res.status(200).json(updatedUser.wishlist);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to remove from wishlist." });
+  }
+};

@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import { login, register, logout, getProfile, updateProfile } from '../controllers/authController.js';
-import { authenticateUser } from '../middleware/auth.js';
+import { login, register, logout, getProfile, updateProfile, getWishlist, addToWishlist, removeFromWishlist } from '../controllers/authController.js';
+import { authenticateUser, authorizeBuyer } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -18,5 +18,10 @@ router.post('/logout', logout);
 // Profile endpoints
 router.get('/profile', authenticateUser, getProfile);
 router.put('/profile', authenticateUser, updateProfile);
+
+// Wishlist endpoints
+router.get('/wishlist', authenticateUser, getWishlist);
+router.post('/wishlist/:productId', authenticateUser, authorizeBuyer, addToWishlist);
+router.delete('/wishlist/:productId', authenticateUser, authorizeBuyer, removeFromWishlist);
 
 export default router;

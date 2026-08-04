@@ -20,6 +20,7 @@ const productSchema = mongoose.Schema({
   unit: { type: String, default: 'kg' },
   quantity: { type: Number, required: true },
   image: { type: String },
+  images: [{ type: String }],
   brand: { type: String },
   location: { type: String }, // e.g. 'Erode, TN'
   farmer: { 
@@ -41,6 +42,12 @@ const productSchema = mongoose.Schema({
   averageRating: { type: Number, default: 0 },
   createdAt: { type: Date, default: new Date() }
 });
+
+// Compound and text indexes for performance optimization
+productSchema.index({ name: 'text', description: 'text', brand: 'text' });
+productSchema.index({ category: 1, price: 1 });
+productSchema.index({ farmer: 1 });
+productSchema.index({ createdAt: -1 });
 
 const Product = mongoose.model('Product', productSchema);
 

@@ -24,7 +24,8 @@ const userSchema = mongoose.Schema({
   },
   isVerified: { type: Boolean, default: false },
   isAuthorized: { type: Boolean, default: true },
-  languages: { type: [String], default: ['English'] }
+  languages: { type: [String], default: ['English'] },
+  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);

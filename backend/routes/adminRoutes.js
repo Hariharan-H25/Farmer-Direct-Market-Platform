@@ -1,15 +1,16 @@
 import express from 'express';
-import { getAllUsers, verifyFarmer, getAdminStats, deleteUser } from '../controllers/adminController.js';
-import { authenticateUser, authorizeAdmin } from '../middleware/auth.js';
+import { getAllUsers, verifyFarmer, getAdminStats, getFarmerStats, deleteUser } from '../controllers/adminController.js';
+import { authenticateUser, authorizeAdmin, authorizeFarmer } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Protect all admin routes with authentication AND admin role authorization
-router.use(authenticateUser, authorizeAdmin);
+// Farmer analytics route
+router.get('/farmer-stats', authenticateUser, authorizeFarmer, getFarmerStats);
 
-router.get('/users', getAllUsers);
-router.get('/stats', getAdminStats);
-router.patch('/verify/:id', verifyFarmer);
-router.delete('/users/:id', deleteUser);
+// Admin-only management routes
+router.get('/users', authenticateUser, authorizeAdmin, getAllUsers);
+router.get('/stats', authenticateUser, authorizeAdmin, getAdminStats);
+router.patch('/verify/:id', authenticateUser, authorizeAdmin, verifyFarmer);
+router.delete('/users/:id', authenticateUser, authorizeAdmin, deleteUser);
 
 export default router;

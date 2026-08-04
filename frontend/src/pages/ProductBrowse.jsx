@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import { Search, SlidersHorizontal, ShoppingBag } from 'lucide-react';

@@ -1,14 +1,19 @@
 import jwt from 'jsonwebtoken';
+import logger from '../utils/logger.js';
 
 export const authenticateUser = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn(`Auth failed: No token provided from IP ${req.ip} for path ${req.originalUrl}`);
       return res.status(401).json({ message: "Authentication failed. No token provided." });
     }
 
     const token = authHeader.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "Authentication failed. Token missing." });
+    if (!token) {
+      logger.warn(`Auth failed: Token missing from IP ${req.ip} for path ${req.originalUrl}`);
+      return res.status(401).json({ message: "Authentication failed. Token missing." });
+    }
 
     const isCustomAuth = token.length < 500;
     let decodedData;
@@ -26,13 +31,14 @@ export const authenticateUser = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error.message);
+    logger.warn(`Auth failed: Invalid/Expired token from IP ${req.ip} - ${error.message}`);
     res.status(401).json({ message: "Authentication failed. Invalid or expired token." });
   }
 };
 
 export const authorizeAdmin = (req, res, next) => {
   if (req.userRole !== 'admin') {
+    logger.warn(`RBAC Forbidden: User ${req.userId} (Role: ${req.userRole}) attempted Admin path ${req.originalUrl}`);
     return res.status(403).json({ message: "Access denied. Admin permissions required." });
   }
   next();
@@ -40,6 +46,7 @@ export const authorizeAdmin = (req, res, next) => {
 
 export const authorizeFarmer = (req, res, next) => {
   if (req.userRole !== 'farmer' && req.userRole !== 'admin') {
+    logger.warn(`RBAC Forbidden: User ${req.userId} (Role: ${req.userRole}) attempted Farmer path ${req.originalUrl}`);
     return res.status(403).json({ message: "Access denied. Farmer permissions required." });
   }
   next();
@@ -47,6 +54,7 @@ export const authorizeFarmer = (req, res, next) => {
 
 export const authorizeBuyer = (req, res, next) => {
   if (req.userRole !== 'buyer' && req.userRole !== 'customer' && req.userRole !== 'admin') {
+    logger.warn(`RBAC Forbidden: User ${req.userId} (Role: ${req.userRole}) attempted Buyer path ${req.originalUrl}`);
     return res.status(403).json({ message: "Access denied. Buyer permissions required." });
   }
   next();

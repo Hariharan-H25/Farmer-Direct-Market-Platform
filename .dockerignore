@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────
+# FarmConnect – Docker Ignore File
+# ─────────────────────────────────────────
+# Prevents sensitive/unnecessary files from
+# being included in Docker build context.
+# ─────────────────────────────────────────
+
+# Dependencies (installed inside container)
+node_modules/
+*/node_modules/
+
+# Environment variables (injected at runtime)
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Build output (rebuilt inside container)
+dist/
+build/
+frontend/dist/
+
+# Logs (mounted as volume)
+logs/
+*.log
+
+# Uploaded files (mounted as volume)
+uploads/
+
+# Git history
+.git/
+.gitignore
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test files (not needed in production image)
+**/__tests__/
+**/tests/
+*.test.js
+*.spec.js
+
+# Docs
+README.md
+*.md

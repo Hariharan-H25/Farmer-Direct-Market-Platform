@@ -1,30 +1,55 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { Phone, Mail, ExternalLink, Globe } from 'lucide-react';
 import Navbar from './components/Navbar';
+import AIChatbot from './components/AIChatbot';
+
+// Eagerly loaded — fast first-paint critical pages
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import ProductBrowse from './pages/ProductBrowse';
-import ProductDetails from './pages/ProductDetails';
-import AdminDashboard from './pages/AdminDashboard';
-import FarmerDashboard from './pages/FarmerDashboard';
-import Cart from './pages/Cart';
+
+// Lazy-loaded — heavy pages, split into separate JS chunks
+const ProductBrowse = lazy(() => import('./pages/ProductBrowse'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const FarmerDashboard = lazy(() => import('./pages/FarmerDashboard'));
+const Cart = lazy(() => import('./pages/Cart'));
+const MarketIntelligence = lazy(() => import('./pages/MarketIntelligence'));
+
+// Loading skeleton shown while lazy pages fetch
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      <p className="text-gray-400 text-sm font-medium">Loading...</p>
+    </div>
+  </div>
+);
 
 function App() {
   return (
     <div className="min-h-screen flex flex-col font-poppins selection:bg-primary/30">
       <Navbar />
       <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/products" element={<ProductBrowse />} />
-          <Route path="/product/:id" element={<ProductDetails />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/dashboard" element={<FarmerDashboard />} />
-          <Route path="/cart" element={<Cart />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Eagerly loaded routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            {/* Lazy-loaded routes — separate JS chunks */}
+            <Route path="/products" element={<ProductBrowse />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/dashboard" element={<FarmerDashboard />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/market" element={<MarketIntelligence />} />
+          </Routes>
+        </Suspense>
+        {/* Global AI Chatbot floating button - available on all pages */}
+        <AIChatbot />
       </main>
 
       <footer className="bg-[#121c15] text-[#e3e7e5] pt-16 pb-8 border-t border-emerald-950">
@@ -68,6 +93,7 @@ function App() {
                 <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
                 <li><Link to="/dashboard" className="hover:text-primary transition-colors">Farmer Dashboard</Link></li>
                 <li><Link to="/register?role=farmer" className="hover:text-primary transition-colors">Sell with Us</Link></li>
+                <li><Link to="/market" className="hover:text-primary transition-colors">Market Intelligence</Link></li>
                 <li><Link to="/contact" className="hover:text-primary transition-colors">Contact Support</Link></li>
               </ul>
             </div>
@@ -80,8 +106,8 @@ function App() {
               <p className="text-xs text-gray-400 leading-relaxed">
                 Referencing top-tier agriculture portals like BigHaat to bring Indian farmers state-of-the-art agricultural technology and tools.
               </p>
-              <a 
-                href="https://www.bighaat.com/?srsltid=AfmBOopWo-rovUMRUg2t9SRaky0nNS4mjOm2VlE6SRKD7mF55WYzwa9o"
+              <a
+                href="https://www.bighaat.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-xs font-black bg-primary text-white hover:bg-primary-dark transition-colors px-4 py-2.5 rounded-xl shadow-lg shadow-primary/10 w-full justify-center"
@@ -93,11 +119,11 @@ function App() {
 
           <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500 font-medium">
             <div>
-              © 2026 FarmConnect. All rights reserved.
+              © 2026 FarmConnect. All rights reserved. | Phase 5 – Production Ready v5.0.0
             </div>
             <div className="flex gap-6">
               <a href="#" className="hover:underline">Privacy Policy</a>
-              <a href="#" className="hover:underline">Terms & Conditions</a>
+              <a href="#" className="hover:underline">Terms &amp; Conditions</a>
               <a href="#" className="hover:underline">Sitemap</a>
             </div>
           </div>
