@@ -48,7 +48,7 @@ export const login = async (req, res) => {
 };
 
 export const register = async (req, res) => {
-  const { email, password, confirmPassword, firstName, lastName, role, phone, farmName, district, state } = req.body;
+  const { email, password, confirmPassword, firstName, lastName, role, phone, farmName, district, state, address } = req.body;
 
   try {
     if (!email || !password || !firstName || !lastName) {
@@ -62,15 +62,18 @@ export const register = async (req, res) => {
     if (password !== confirmPassword) return res.status(400).json({ message: "Passwords don't match." });
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    // Standardize buyer/customer roles
+    const userRole = role === 'customer' || role === 'buyer' ? 'buyer' : (role || 'buyer');
 
     const result = await User.create({ 
       email: normalizedEmail, 
       password: hashedPassword, 
       name: `${firstName.trim()} ${lastName.trim()}`, 
-      role: role || 'customer',
+      role: userRole,
       phone: phone || '',
-      farmName: role === 'farmer' ? farmName : '',
-      location: role === 'farmer' ? { district, state } : {},
+      address: address || '',
+      farmName: userRole === 'farmer' ? farmName : '',
+      location: userRole === 'farmer' ? { district, state } : {},
       produceImage: req.file ? req.file.path : '',
       isAuthorized: true
     });
@@ -97,5 +100,61 @@ export const logout = async (req, res) => {
     res.status(200).json({ message: "Logged out successfully." });
   } catch (error) {
     res.status(500).json({ message: "Logout failed." });
+  }
+};
+
+export const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: "User profile not found." });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch user profile." });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  const { name, phone, address, farmName, district, state, languages, currentPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (name) user.name = name.trim();
+    if (phone) user.phone = phone.trim();
+    if (address) user.address = address.trim();
+    if (farmName && user.role === 'farmer') user.farmName = farmName.trim();
+    if ((district || state) && user.role === 'farmer') {
+      user.location = {
+        ...user.location,
+        district: district || user.location?.district,
+        state: state || user.location?.state
+      };
+    }
+    if (languages) user.languages = languages;
+
+    // Handle password change if requested
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: "Current password is required to set a new password." });
+      }
+      const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordCorrect) {
+        return res.status(400).json({ message: "Incorrect current password." });
+      }
+      user.password = await bcrypt.hash(newPassword, 12);
+    }
+
+    const updatedUser = await user.save();
+    const userObject = updatedUser.toObject();
+    delete userObject.password;
+
+    res.status(200).json(userObject);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update user profile." });
   }
 };

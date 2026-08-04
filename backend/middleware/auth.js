@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const auth = async (req, res, next) => {
+export const authenticateUser = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -31,13 +31,33 @@ const auth = async (req, res, next) => {
   }
 };
 
-export const adminAuth = async (req, res, next) => {
-  auth(req, res, () => {
-    if (req.userRole !== 'admin') {
-      return res.status(403).json({ message: "Access denied. Admin permissions required." });
-    }
-    next();
+export const authorizeAdmin = (req, res, next) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ message: "Access denied. Admin permissions required." });
+  }
+  next();
+};
+
+export const authorizeFarmer = (req, res, next) => {
+  if (req.userRole !== 'farmer' && req.userRole !== 'admin') {
+    return res.status(403).json({ message: "Access denied. Farmer permissions required." });
+  }
+  next();
+};
+
+export const authorizeBuyer = (req, res, next) => {
+  if (req.userRole !== 'buyer' && req.userRole !== 'customer' && req.userRole !== 'admin') {
+    return res.status(403).json({ message: "Access denied. Buyer permissions required." });
+  }
+  next();
+};
+
+// Aliases for backwards compatibility
+export const auth = authenticateUser;
+export const adminAuth = (req, res, next) => {
+  authenticateUser(req, res, () => {
+    authorizeAdmin(req, res, next);
   });
 };
 
-export default auth;
+export default authenticateUser;

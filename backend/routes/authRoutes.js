@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import { login, register, logout } from '../controllers/authController.js';
+import { login, register, logout, getProfile, updateProfile } from '../controllers/authController.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -13,5 +14,9 @@ const upload = multer({ storage });
 router.post('/login', login);
 router.post('/register', upload.single('produceImage'), register);
 router.post('/logout', logout);
+
+// Profile endpoints
+router.get('/profile', authenticateUser, getProfile);
+router.put('/profile', authenticateUser, updateProfile);
 
 export default router;

@@ -7,10 +7,11 @@ const userSchema = mongoose.Schema({
   phone: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['customer', 'farmer', 'admin'], 
-    default: 'customer' 
+    enum: ['buyer', 'customer', 'farmer', 'admin'], 
+    default: 'buyer' 
   },
-  // Farmer specific fields
+  // Farmer & Buyer profile fields
+  address: { type: String },
   farmName: { type: String },
   produceImage: { type: String },
   location: {

@@ -27,6 +27,8 @@ API.interceptors.response.use(
 export const signIn = (formData) => API.post('/auth/login', formData);
 export const signUp = (formData) => API.post('/auth/register', formData);
 export const signOut = () => API.post('/auth/logout');
+export const fetchProfile = () => API.get('/auth/profile');
+export const updateProfile = (updatedData) => API.put('/auth/profile', updatedData);
 
 export const fetchProducts = (params) => API.get('/products', { params });
 export const createProduct = (newProduct) => API.post('/products', newProduct, {
