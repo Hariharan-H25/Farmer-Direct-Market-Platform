@@ -9,7 +9,7 @@ const productSchema = mongoose.Schema({
     enum: [
       // Farm Produce
       'Vegetables', 'Fruits', 'Spices', 'Grains', 'Dairy',
-      // Agri Inputs (BigHaat style)
+      // Agricultural Inputs (Seeds, Tools, Nutrition)
       'Seeds', 'Crop Protection', 'Fertilizers', 'Tools',
       'Irrigation', 'Farming Equip', 'Organic', 'Specialty'
     ] 

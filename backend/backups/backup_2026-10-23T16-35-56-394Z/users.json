@@ -1,0 +1,218 @@
+[
+  {
+    "_id": "69f4ad43e50f3aa5c8137309",
+    "name": "Ravi Shankar",
+    "email": "ravi@farmer.com",
+    "password": "$2b$12$8Y80T4RXVIXicujmZpMx.uvGqs6vxgJ1qjJPn9E8nC4fPpw29DnH.",
+    "phone": "9111111111",
+    "role": "farmer",
+    "farmName": "Green Valley Farm",
+    "location": {
+      "district": "Coimbatore",
+      "state": "Tamil Nadu"
+    },
+    "isVerified": true,
+    "languages": [
+      "Tamil",
+      "English"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad43e50f3aa5c813730a",
+    "name": "Meena Devi",
+    "email": "meena@farmer.com",
+    "password": "$2b$12$f1WT4Kc.eiyGGr5k3VgsSeU8n7Mt5f2kZn4Fm0cwNdZWZUpTDOSeO",
+    "phone": "9222222222",
+    "role": "farmer",
+    "farmName": "Sunrise Organic Fields",
+    "location": {
+      "district": "Madurai",
+      "state": "Tamil Nadu"
+    },
+    "isVerified": true,
+    "languages": [
+      "Tamil"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad44e50f3aa5c813730b",
+    "name": "Suresh Patel",
+    "email": "suresh@farmer.com",
+    "password": "$2b$12$oJWhjLbx4vSBNLpV4I/eWOTukl3GJeW..60lh/lKtO8jsGU0X2fEm",
+    "phone": "9333333333",
+    "role": "farmer",
+    "farmName": "Patel Agro Farm",
+    "location": {
+      "district": "Surat",
+      "state": "Gujarat"
+    },
+    "isVerified": true,
+    "languages": [
+      "Gujarati",
+      "Hindi"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad44e50f3aa5c813730c",
+    "name": "Lakshmi Reddy",
+    "email": "lakshmi@farmer.com",
+    "password": "$2b$12$mBVaS90QFGEadpKAQSwB.Oly6ymqxRhnjS4MCiipI4vgxaeBhMYjO",
+    "phone": "9444444444",
+    "role": "farmer",
+    "farmName": "Reddy Natural Farms",
+    "location": {
+      "district": "Guntur",
+      "state": "Andhra Pradesh"
+    },
+    "isVerified": true,
+    "languages": [
+      "Telugu",
+      "English"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad44e50f3aa5c813730d",
+    "name": "Arjun Singh",
+    "email": "arjun@farmer.com",
+    "password": "$2b$12$G5bx7QZCkLLXrpblRtYruuYtU46spEUnFCPOiuoiFVkE0JoBcz5dK",
+    "phone": "9555555555",
+    "role": "farmer",
+    "farmName": "Punjab Golden Fields",
+    "location": {
+      "district": "Ludhiana",
+      "state": "Punjab"
+    },
+    "isVerified": true,
+    "languages": [
+      "Punjabi",
+      "Hindi"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad44e50f3aa5c813730e",
+    "name": "Priya Nair",
+    "email": "priya@customer.com",
+    "password": "$2b$12$SZVZ/v.Qy9YFdvxebOX8CONSgLV4/XjaFXNpTlDDX7mqV8SCe9S2u",
+    "phone": "9600000001",
+    "role": "customer",
+    "isVerified": true,
+    "languages": [
+      "English"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad44e50f3aa5c813730f",
+    "name": "Rahul Verma",
+    "email": "rahul@customer.com",
+    "password": "$2b$12$oLLrIWuRqYyhAsvh9YoLUO6oKFU2YS7zMgIIucg8gfIIFF9HtCz8i",
+    "phone": "9700000002",
+    "role": "customer",
+    "isVerified": true,
+    "languages": [
+      "English"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad45e50f3aa5c8137310",
+    "name": "Anjali Sharma",
+    "email": "anjali@customer.com",
+    "password": "$2b$12$VV0KEQUMf0j4Ym9R6Pm/Muc8UbEl/3XQ4pcpuFIm8rmckxabXq3S.",
+    "phone": "9800000003",
+    "role": "customer",
+    "isVerified": true,
+    "languages": [
+      "English"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4ad45e50f3aa5c8137311",
+    "name": "Kiran Kumar",
+    "email": "kiran@customer.com",
+    "password": "$2b$12$MQ0Xc2zIOM5xEyPIRf9wzOb.oEfZFB2l8zFU83BMBXNIpkbhYdHIu",
+    "phone": "9900000004",
+    "role": "customer",
+    "isVerified": true,
+    "languages": [
+      "English"
+    ],
+    "createdAt": "2026-05-01T13:40:19.090Z",
+    "__v": 0
+  },
+  {
+    "_id": "69f4afd4570ed72e14f9d7a0",
+    "name": "Hariharan Hariharan",
+    "email": "nhariharan30725@gmail.com",
+    "password": "$2a$12$/VmiSFMBpOTsHBHeiAwu/.8IdxzajLnMO17dWKS4m/h4N1riqqxFu",
+    "phone": "9842055757",
+    "role": "admin",
+    "farmName": "",
+    "produceImage": "",
+    "isVerified": true,
+    "languages": [
+      "English"
+    ],
+    "createdAt": "2026-05-01T13:40:09.104Z",
+    "__v": 0,
+    "isAuthorized": true,
+    "updatedAt": "2026-08-02T12:30:59.080Z"
+  },
+  {
+    "_id": "6a1effeb2bbefff508ea3c82",
+    "name": "Deepa Menon",
+    "email": "deepa@customer.com",
+    "password": "$2a$12$lNr3P56docYHsSBECgyxKO9PazmyC6Nt0l2ZK7dRfy9i6gDpvNReS",
+    "phone": "9100000005",
+    "role": "customer",
+    "isVerified": true,
+    "languages": [
+      "English"
+    ],
+    "createdAt": "2026-06-02T16:08:10.332Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a6f37c19ae38cfa0bf7415b",
+    "name": "saran r",
+    "email": "saran757@gmail.com",
+    "password": "$2a$12$jfy9AzBhsbDB.lGmYtgE1ezxv.w/EEo45l814hHGJBzyFxm9JaFUG",
+    "phone": "9823456178",
+    "role": "customer",
+    "farmName": "",
+    "produceImage": "",
+    "isVerified": false,
+    "languages": [
+      "English"
+    ],
+    "createdAt": "2026-08-02T12:03:00.282Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a6f388383b712433290c570",
+    "email": "nhariharan757@gmail.com",
+    "__v": 0,
+    "createdAt": "2026-08-02T12:30:59.066Z",
+    "isAuthorized": true,
+    "isVerified": true,
+    "name": "Hariharan Admin",
+    "password": "$2a$12$/VmiSFMBpOTsHBHeiAwu/.8IdxzajLnMO17dWKS4m/h4N1riqqxFu",
+    "phone": "9842055757",
+    "role": "admin",
+    "updatedAt": "2026-08-02T12:30:59.066Z"
+  }
+]

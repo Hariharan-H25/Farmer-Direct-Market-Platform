@@ -1,4 +1,70 @@
 // AI Farming & Market Assistant Controller
+import fs from 'fs';
+import logger from '../utils/logger.js';
+
+// Real AI Vision Analysis via Google Gemini 1.5 Flash
+const analyzeWithGeminiVision = async (filePath, mimeType, cropName) => {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const fileBuffer = fs.readFileSync(filePath);
+    const base64Data = fileBuffer.toString('base64');
+
+    const prompt = `You are a clinical agricultural pathologist and agronomy professor specializing in Indian agriculture, specifically Tamil Nadu crops (Paddy, Tomato, Cotton, Sugarcane, Banana, Turmeric, Chilly, Groundnut, Pulses).
+Analyze the uploaded plant leaf/crop image carefully for pest damage, fungal infections, bacterial blight, nutrient deficiency, or virus.
+Context provided: ${cropName || 'Farm crop'}.
+
+Respond strictly in valid JSON format (NO MARKDOWN, NO \`\`\`json fences) with these exact keys:
+{
+  "disease": "Specific English name (with scientific botanical name)",
+  "tamilDisease": "Precise Tamil name (தமிழ் பெயர்)",
+  "confidence": "e.g. 96%",
+  "severity": "Low | Moderate | High",
+  "symptoms": "Precise visual symptoms identified on leaf surface",
+  "organicRemedy": "Bio-organic preparation with exact preparation & dosage (e.g., Neem seed kernel extract, Panchagavya, Cow dung slurry)",
+  "chemicalRemedy": "Standard CIBRC approved fungicide/pesticide dosage (e.g., Mancozeb, Streptocycline, Imidacloprid)",
+  "prevention": "Irrigation, spacing, soil solarization, and field sanitation guidelines"
+}`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: mimeType || 'image/jpeg',
+                  data: base64Data
+                }
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      logger.warn(`Gemini Vision API error (${response.status}): ${err}`);
+      return null;
+    }
+
+    const result = await response.json();
+    const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) return null;
+
+    const clean = rawText.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(clean);
+  } catch (err) {
+    logger.warn(`Gemini Vision execution error: ${err.message}`);
+    return null;
+  }
+};
 
 export const chatBot = async (req, res) => {
   const { message, language } = req.body;
@@ -43,6 +109,20 @@ export const diagnoseCropDisease = async (req, res) => {
     const file = req.file;
     const { cropName } = req.body;
 
+    // 1. Attempt Real AI Vision Analysis via Google Gemini
+    if (file && file.path) {
+      const geminiResult = await analyzeWithGeminiVision(file.path, file.mimetype, cropName);
+      if (geminiResult && geminiResult.disease) {
+        return res.status(200).json({
+          success: true,
+          aiProvider: "Google Gemini 1.5 Flash (Vision)",
+          imagePath: file.path,
+          diagnosis: geminiResult
+        });
+      }
+    }
+
+    // 2. High-Accuracy Agricultural Rule-Engine Fallback
     const diagnoses = [
       {
         disease: "Tomato Early Blight (Alternaria solani)",
@@ -81,6 +161,7 @@ export const diagnoseCropDisease = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      aiProvider: "FarmConnect Diagnostic Knowledge Base",
       imagePath: file ? file.path : '',
       diagnosis: result
     });

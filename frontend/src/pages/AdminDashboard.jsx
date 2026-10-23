@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchAllUsers, verifyFarmer, fetchOrders, deleteUser } from '../api';
-import { Users, Shield, Mail, Phone, Home, Image as ImageIcon, CheckCircle, Clock, Package, Trash2, Settings as SettingsIcon, Save } from 'lucide-react';
+import { fetchAllUsers, verifyFarmer, fetchOrders, deleteUser, downloadSalesReportCSV } from '../api';
+import { Users, Shield, Mail, Phone, Home, Image as ImageIcon, CheckCircle, Clock, Package, Trash2, Settings as SettingsIcon, Save, Download } from 'lucide-react';
 import socket from '../socket';
 
 const AdminDashboard = () => {
@@ -107,6 +107,21 @@ const AdminDashboard = () => {
     alert("Platform settings updated successfully!");
   };
 
+  const handleDownloadCSV = async () => {
+    try {
+      const response = await downloadSalesReportCSV();
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `FarmConnect_Admin_Sales_Report_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert("Failed to export sales CSV: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-10 space-y-12">
       <div className="max-w-7xl mx-auto space-y-10">
@@ -133,28 +148,37 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 gap-8">
+        {/* Tabs & Export Action Bar */}
+        <div className="flex flex-wrap items-center justify-between border-b border-gray-200 gap-4">
+          <div className="flex gap-8">
+            <button 
+              onClick={() => setActiveTab('users')}
+              className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${activeTab === 'users' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              User Management
+              {activeTab === 'users' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            </button>
+            <button 
+              onClick={() => setActiveTab('orders')}
+              className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${activeTab === 'orders' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              Recent Orders
+              {activeTab === 'orders' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${activeTab === 'settings' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              Platform Settings
+              {activeTab === 'settings' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            </button>
+          </div>
+
           <button 
-            onClick={() => setActiveTab('users')}
-            className={`pb-4 font-bold text-lg transition-colors relative ${activeTab === 'users' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+            onClick={handleDownloadCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 rounded-xl font-bold text-sm transition-all mb-2 cursor-pointer shadow-sm"
           >
-            User Management
-            {activeTab === 'users' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('orders')}
-            className={`pb-4 font-bold text-lg transition-colors relative ${activeTab === 'orders' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            Recent Orders
-            {activeTab === 'orders' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`pb-4 font-bold text-lg transition-colors relative ${activeTab === 'settings' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            Platform Settings
-            {activeTab === 'settings' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            <Download size={16} /> Export Sales Report (CSV)
           </button>
         </div>
 

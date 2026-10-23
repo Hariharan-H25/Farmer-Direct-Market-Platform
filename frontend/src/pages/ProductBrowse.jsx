@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
-import { Search, SlidersHorizontal, ShoppingBag } from 'lucide-react';
+import { Search, ShoppingBag, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { fetchProducts } from '../api';
 import socket from '../socket';
 
@@ -18,7 +18,7 @@ const mockProducts = [
   { id: 10, name: 'Fresh Green Peas', category: 'Vegetables', price: 60, unit: 'kg', rating: 4.9, location: 'Shimla, HP', image: 'https://images.unsplash.com/photo-1512805147242-b3b0b55500e1?auto=format&fit=crop&q=80&w=800' },
   { id: 11, name: 'Purple Eggplant', category: 'Vegetables', price: 35, unit: 'kg', rating: 4.5, location: 'Madurai, TN', image: 'https://images.unsplash.com/photo-1601315573456-427f711204d3?auto=format&fit=crop&q=80&w=800' },
   { id: 12, name: 'Crispy Cucumber', category: 'Vegetables', price: 28, unit: 'kg', rating: 4.7, location: 'Coimbatore, TN', image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=800' },
-  
+
   // Fruits
   { id: 13, name: 'Alphonso Mangoes', category: 'Fruits', price: 250, unit: 'kg', rating: 4.9, location: 'Ratnagiri, MH', image: 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&q=80&w=800' },
   { id: 14, name: 'Red Strawberries', category: 'Fruits', price: 180, unit: 'box', rating: 4.8, location: 'Mahabaleshwar, MH', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&q=80&w=800' },
@@ -91,69 +91,96 @@ const SkeletonCard = () => (
   </div>
 );
 
+const CATEGORIES = ['All', 'Vegetables', 'Fruits', 'Spices', 'Grains', 'Dairy', 'Seeds', 'Crop Care', 'Farming Tools'];
+
+const PRICE_RANGES = [
+  { label: 'All Prices', max: Infinity },
+  { label: 'Under ₹50', max: 50 },
+  { label: 'Under ₹200', max: 200 },
+  { label: 'Under ₹500', max: 500 },
+  { label: '₹500+', max: Infinity, min: 500 },
+];
+
+const SORT_OPTIONS = [
+  { label: 'Newest First', value: 'newest' },
+  { label: 'Price: Low to High', value: 'price_asc' },
+  { label: 'Price: High to Low', value: 'price_desc' },
+  { label: 'Top Rated', value: 'rating' },
+];
+
+const CATEGORY_IMAGES = {
+  All: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=80&w=200',
+  Vegetables: 'https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&q=80&w=200',
+  Fruits: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=200',
+  Spices: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&q=80&w=200',
+  Grains: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=200',
+  Dairy: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&q=80&w=200',
+};
+
 const ProductBrowse = () => {
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [priceRange, setPriceRange] = useState(0); // index into PRICE_RANGES
+  const [sortBy, setSortBy] = useState('newest');
   const [loading, setLoading] = useState(true);
-  
-  const categories = [
-    { name: 'All', image: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=80&w=200' },
-    { name: 'Vegetables', image: 'https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&q=80&w=200' },
-    { name: 'Fruits', image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=200' },
-    { name: 'Spices', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&q=80&w=200' },
-    { name: 'Grains', image: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=200' },
-    { name: 'Dairy', image: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&q=80&w=200' },
-  ];
+
+  // Derived price filter values
+  const activePriceRange = PRICE_RANGES[priceRange];
 
   useEffect(() => {
     const loadProducts = async () => {
       try {
         setLoading(true);
         const params = {};
-        if (selectedCategory !== 'All') {
-          params.category = selectedCategory;
-        }
-        if (searchQuery.trim()) {
-          params.search = searchQuery;
-        }
-        
+        if (selectedCategory !== 'All') params.category = selectedCategory;
+        if (searchQuery.trim()) params.search = searchQuery;
+        if (sortBy) params.sort = sortBy;
+
         const { data } = await fetchProducts(params);
-        
-        // If server returns empty database, fallback to seeded mock list for user safety
+
+        // If server returns empty database, fallback to seeded mock list
         if (data && data.length > 0) {
           setProducts(data);
         } else {
-          // Client-side fallback filter
-          const filteredMock = selectedCategory === 'All'
-            ? mockProducts
-            : mockProducts.filter(p => p.category === selectedCategory);
-          const searchedMock = searchQuery.trim()
-            ? filteredMock.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            : filteredMock;
-          setProducts(searchedMock);
+          applyMockFilters();
         }
       } catch (err) {
-        console.error("API error fetching products, using mock fallback", err);
-        const filteredMock = selectedCategory === 'All'
-          ? mockProducts
-          : mockProducts.filter(p => p.category === selectedCategory);
-        const searchedMock = searchQuery.trim()
-          ? filteredMock.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-          : filteredMock;
-        setProducts(searchedMock);
+        console.error('API error fetching products, using mock fallback', err);
+        applyMockFilters();
       } finally {
         setLoading(false);
       }
     };
 
-    // Simple debounced trigger
-    const timeoutId = setTimeout(loadProducts, 250);
+    const applyMockFilters = () => {
+      let filtered = selectedCategory === 'All'
+        ? mockProducts
+        : mockProducts.filter(p => p.category === selectedCategory);
 
-    const handleProductChange = () => {
-      loadProducts();
+      if (searchQuery.trim()) {
+        filtered = filtered.filter(p =>
+          p.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      if (activePriceRange.min !== undefined) {
+        filtered = filtered.filter(p => p.price >= activePriceRange.min);
+      }
+      if (activePriceRange.max !== Infinity) {
+        filtered = filtered.filter(p => p.price <= activePriceRange.max);
+      }
+
+      if (sortBy === 'price_asc') filtered = [...filtered].sort((a, b) => a.price - b.price);
+      else if (sortBy === 'price_desc') filtered = [...filtered].sort((a, b) => b.price - a.price);
+      else if (sortBy === 'rating') filtered = [...filtered].sort((a, b) => b.rating - a.rating);
+
+      setProducts(filtered);
     };
 
+    const timeoutId = setTimeout(loadProducts, 250);
+
+    const handleProductChange = () => loadProducts();
     socket.on('product_created', handleProductChange);
     socket.on('product_stock_updated', handleProductChange);
     socket.on('product_deleted', handleProductChange);
@@ -164,54 +191,139 @@ const ProductBrowse = () => {
       socket.off('product_stock_updated', handleProductChange);
       socket.off('product_deleted', handleProductChange);
     };
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, priceRange, sortBy]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-12 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-        <div className="space-y-4">
-          <h1 className="text-5xl font-black text-dark tracking-tight">
-            Fresh <span className="text-primary">Marketplace</span>
-          </h1>
-          <p className="text-gray-500 text-lg">Browse 100% fresh organic produce directly from verified local farms.</p>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-10 animate-in fade-in duration-500">
 
-        <div className="flex items-center space-x-4">
-          <div className="relative group w-full md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors animate-in" size={20} />
-            <input 
-              type="text" 
-              placeholder="Search products..." 
+      {/* Page Header */}
+      <div className="space-y-2">
+        <h1 className="text-5xl font-black text-dark tracking-tight">
+          Fresh <span className="text-primary">Marketplace</span>
+        </h1>
+        <p className="text-gray-500 text-lg">Browse 100% fresh organic produce directly from verified local farms.</p>
+      </div>
+
+      {/* ─── Single Consolidated Search + Filter Bar ─────────────────── */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-4">
+        <div className="flex flex-col md:flex-row gap-3">
+
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              id="product-search"
+              type="text"
+              placeholder="Search products (e.g. Tomatoes, Rice, Ghee...)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white border border-slate-200/80 px-12 py-4 rounded-2xl w-full shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              className="w-full bg-gray-50 border border-slate-200 pl-11 pr-4 py-3 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
             />
           </div>
-          <button className="bg-white border border-slate-200/80 p-4 rounded-2xl shadow-sm hover:bg-slate-50 transition-colors text-slate-600 cursor-pointer">
-            <SlidersHorizontal size={24} />
-          </button>
+
+          {/* Category Filter */}
+          <div className="relative">
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+            <select
+              id="category-filter"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="appearance-none bg-gray-50 border border-slate-200 px-4 py-3 pr-9 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer w-full md:w-44"
+            >
+              {CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat === 'All' ? 'All Categories' : cat}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Price Filter */}
+          <div className="relative">
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+            <select
+              id="price-filter"
+              value={priceRange}
+              onChange={(e) => setPriceRange(Number(e.target.value))}
+              className="appearance-none bg-gray-50 border border-slate-200 px-4 py-3 pr-9 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer w-full md:w-40"
+            >
+              {PRICE_RANGES.map((range, idx) => (
+                <option key={idx} value={idx}>{range.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort Option */}
+          <div className="relative">
+            <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={15} />
+            <select
+              id="sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="appearance-none bg-gray-50 border border-slate-200 pl-9 pr-9 py-3 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer w-full md:w-48"
+            >
+              {SORT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+          </div>
+
+          {/* Clear Filters */}
+          {(searchQuery || selectedCategory !== 'All' || priceRange !== 0 || sortBy !== 'newest') && (
+            <button
+              onClick={() => { setSearchQuery(''); setSelectedCategory('All'); setPriceRange(0); setSortBy('newest'); }}
+              className="px-4 py-3 rounded-xl border border-slate-200 text-sm text-gray-500 hover:bg-gray-50 hover:text-red-500 transition-colors whitespace-nowrap font-medium"
+            >
+              Clear All
+            </button>
+          )}
         </div>
+
+        {/* Active filter chips */}
+        {(searchQuery || selectedCategory !== 'All' || priceRange !== 0) && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full">
+                🔍 "{searchQuery}"
+                <button onClick={() => setSearchQuery('')} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            )}
+            {selectedCategory !== 'All' && (
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                🏷 {selectedCategory}
+                <button onClick={() => setSelectedCategory('All')} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            )}
+            {priceRange !== 0 && (
+              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                💰 {PRICE_RANGES[priceRange].label}
+                <button onClick={() => setPriceRange(0)} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            )}
+            <span className="text-xs text-gray-400 self-center">{products.length} products found</span>
+          </div>
+        )}
       </div>
+      {/* ─────────────────────────────────────────────────────────────── */}
 
       {/* Touchable Category Icons */}
       <div className="flex items-center space-x-6 md:space-x-10 overflow-x-auto pb-8 pt-4 no-scrollbar px-2">
-        {categories.map(cat => (
+        {['All', 'Vegetables', 'Fruits', 'Spices', 'Grains', 'Dairy'].map(cat => (
           <button
-            key={cat.name}
-            onClick={() => setSelectedCategory(cat.name)}
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
             className="flex flex-col items-center gap-4 group shrink-0 cursor-pointer"
           >
             <div className={`w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden shadow-lg transition-all duration-300 ${
-              selectedCategory === cat.name 
-              ? 'ring-4 ring-primary ring-offset-4 scale-110 shadow-primary/30' 
+              selectedCategory === cat
+              ? 'ring-4 ring-primary ring-offset-4 scale-110 shadow-primary/30'
               : 'ring-2 ring-slate-100 group-hover:ring-primary/50 group-hover:scale-105'
             }`}>
-              <img src={cat.image} alt={cat.name} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+              <img src={CATEGORY_IMAGES[cat]} alt={cat} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
             </div>
             <span className={`font-black text-xs md:text-sm uppercase tracking-wider transition-colors ${
-              selectedCategory === cat.name ? 'text-primary' : 'text-slate-500 group-hover:text-primary'
+              selectedCategory === cat ? 'text-primary' : 'text-slate-500 group-hover:text-primary'
             }`}>
-              {cat.name}
+              {cat}
             </span>
           </button>
         ))}
@@ -237,8 +349,14 @@ const ProductBrowse = () => {
           </div>
           <h3 className="text-2xl font-bold text-dark">No Products Found</h3>
           <p className="text-slate-500">
-            We couldn't find any products matching your search term. Try searching for other terms or checking other categories.
+            We couldn't find any products matching your search. Try adjusting your filters or search term.
           </p>
+          <button
+            onClick={() => { setSearchQuery(''); setSelectedCategory('All'); setPriceRange(0); setSortBy('newest'); }}
+            className="mt-2 px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors"
+          >
+            Clear Filters
+          </button>
         </div>
       )}
     </div>

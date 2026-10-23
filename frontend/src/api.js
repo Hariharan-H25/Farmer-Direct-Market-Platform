@@ -1,7 +1,14 @@
 import axios from 'axios';
 
-const API = axios.create({ 
-  baseURL: '/api'
+// In production (Vercel), use the full Render.com backend URL
+// In local dev, Vite proxy handles /api → localhost:5000
+const BASE_URL = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api`
+  : '/api';
+
+const API = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: false,
 });
 
 API.interceptors.request.use((req) => {
@@ -54,6 +61,14 @@ export const fetchOrderById = (id) => API.get(`/orders/${id}`);
 export const updateOrderStatus = (id, statusData) => API.patch(`/orders/${id}/status`, statusData);
 export const cancelOrder = (id) => API.patch(`/orders/${id}/cancel`);
 export const requestReturn = (id, reasonData) => API.patch(`/orders/${id}/return`, reasonData);
+
+// Payment Gateway: Razorpay & UPI
+export const createRazorpayOrder = (orderData) => API.post('/orders/razorpay-order', orderData);
+export const verifyRazorpayPayment = (paymentData) => API.post('/orders/verify-payment', paymentData);
+
+// Export & Printable Invoices
+export const fetchOrderInvoice = (id) => API.get(`/orders/${id}/invoice`);
+export const downloadSalesReportCSV = () => API.get('/orders/export/csv', { responseType: 'blob' });
 
 export const fetchAllUsers = () => API.get('/admin/users');
 export const verifyFarmer = (id) => API.patch(`/admin/verify/${id}`);

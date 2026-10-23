@@ -7,6 +7,8 @@
     "dev": "nodemon server.js",
     "seed": "node seedUsers.js",
     "seed:agri": "node seedAgriInputs.js",
+    "backup": "node backupData.js",
+    "restore": "node restoreData.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --forceExit"
   },
   "dependencies": {

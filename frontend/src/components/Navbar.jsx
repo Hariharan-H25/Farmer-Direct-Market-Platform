@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, Search, User, MapPin, Phone, LogOut, Package, Heart, Sun, Moon, TrendingUp } from 'lucide-react';
+import { ShoppingCart, Menu, X, User, MapPin, Phone, LogOut, Package, Heart, Sun, Moon, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -63,25 +63,7 @@ const Navbar = () => {
             </span>
           </Link>
 
-          {/* Search Bar - Center */}
-          <div className="hidden lg:flex flex-1 max-w-2xl relative">
-            <div className="flex w-full">
-              <select className="bg-gray-50 border border-gray-300 border-r-0 rounded-l-md px-3 text-sm text-gray-600 outline-none focus:ring-1 focus:ring-primary w-32 cursor-pointer relative z-10">
-                <option>{t('allCategories')}</option>
-                <option>Vegetables</option>
-                <option>Fruits</option>
-                <option>Seeds</option>
-              </select>
-              <input
-                type="text"
-                placeholder={t('searchProducts')}
-                className="flex-1 border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-full"
-              />
-              <button className="bg-secondary hover:bg-primary transition-colors text-white px-6 rounded-r-md flex items-center justify-center">
-                <Search size={18} />
-              </button>
-            </div>
-          </div>
+
 
           {/* Right Actions */}
           <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
@@ -153,17 +135,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile Search Bar */}
-        <div className="mt-3 lg:hidden flex w-full relative">
-          <input
-            type="text"
-            placeholder={t('searchProducts')}
-            className="flex-1 border border-gray-300 rounded-l-md px-4 py-2 text-sm focus:outline-none focus:border-primary"
-          />
-          <button className="bg-secondary text-white px-4 rounded-r-md flex items-center justify-center">
-            <Search size={18} />
-          </button>
-        </div>
+
       </div>
 
       {/* 3. Category Sub-navbar */}

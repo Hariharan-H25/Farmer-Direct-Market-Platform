@@ -40,7 +40,7 @@ const CropDiseaseDetector = ({ lang }) => {
       formData.append('cropImage', image);
       if (cropName) formData.append('cropName', cropName);
       const { data } = await API.post('/ai/diagnose-crop', formData);
-      setResult(data.diagnosis);
+      setResult({ ...data.diagnosis, aiProvider: data.aiProvider });
     } catch {
       setResult({ disease: 'Analysis failed. Please try again.' });
     } finally {
@@ -80,13 +80,18 @@ const CropDiseaseDetector = ({ lang }) => {
       <button
         onClick={handleAnalyze}
         disabled={!image || loading}
-        className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 rounded-xl font-bold text-sm transition-colors"
+        className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 rounded-xl font-bold text-sm transition-colors cursor-pointer"
       >
-        {loading ? '🔍 Analyzing...' : (lang === 'ta' ? '🔬 பகுப்பாய்வு செய்' : '🔬 Analyze Leaf')}
+        {loading ? '🔍 Analyzing with AI...' : (lang === 'ta' ? '🔬 AI பகுப்பாய்வு செய்' : '🔬 Analyze Leaf with AI')}
       </button>
 
       {result && (
         <div className="mt-4 bg-emerald-900/40 border border-emerald-600/40 rounded-2xl p-4 space-y-3">
+          {result.aiProvider && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-bold">
+              ✨ {result.aiProvider}
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <h4 className="font-bold text-emerald-300">{result.disease}</h4>
             {result.confidence && <span className="text-xs bg-emerald-700/50 text-emerald-300 px-2 py-1 rounded-full">{result.confidence}</span>}
@@ -96,6 +101,9 @@ const CropDiseaseDetector = ({ lang }) => {
           {result.organicRemedy && <div className="text-xs text-gray-300"><span className="text-green-400 font-bold">🌿 Organic: </span>{result.organicRemedy}</div>}
           {result.chemicalRemedy && result.chemicalRemedy !== 'None required.' && (
             <div className="text-xs text-gray-300"><span className="text-blue-400 font-bold">💊 Chemical: </span>{result.chemicalRemedy}</div>
+          )}
+          {result.prevention && (
+            <div className="text-xs text-gray-300"><span className="text-teal-400 font-bold">🛡️ Prevention: </span>{result.prevention}</div>
           )}
         </div>
       )}

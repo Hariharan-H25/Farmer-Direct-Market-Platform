@@ -1,0 +1,160 @@
+[
+  {
+    "_id": "6a368c852acb6d92929b4f85",
+    "customer": "69f4ad44e50f3aa5c813730e",
+    "items": [
+      {
+        "product": "6a258fd67e82aa641cd5d245",
+        "quantity": 1,
+        "price": 35,
+        "farmer": "69f4ad43e50f3aa5c8137309",
+        "_id": "6a368c852acb6d92929b4f86"
+      }
+    ],
+    "totalAmount": 85,
+    "paymentMethod": "COD",
+    "paymentStatus": "Pending",
+    "deliveryStatus": "Processing",
+    "shippingAddress": {
+      "address": "123 Main Street",
+      "city": "Local City",
+      "phone": "9600000001"
+    },
+    "createdAt": "2026-06-20T12:50:13.824Z",
+    "__v": 0,
+    "updatedAt": "2026-10-23T16:45:30.701Z"
+  },
+  {
+    "_id": "6a722423bf483e8e037834de",
+    "customer": "6a6f388383b712433290c570",
+    "items": [
+      {
+        "product": "6a258fd67e82aa641cd5d245",
+        "quantity": 1,
+        "price": 35,
+        "farmer": "69f4ad43e50f3aa5c8137309",
+        "_id": "6a722423bf483e8e037834df"
+      },
+      {
+        "product": "6a258fd67e82aa641cd5d241",
+        "quantity": 1,
+        "price": 40,
+        "farmer": "69f4ad43e50f3aa5c8137309",
+        "_id": "6a722423bf483e8e037834e0"
+      }
+    ],
+    "totalAmount": 125,
+    "paymentMethod": "Online",
+    "paymentStatus": "Pending",
+    "deliveryStatus": "Pending",
+    "shippingAddress": {
+      "address": "123 Main Street",
+      "city": "Local City",
+      "phone": "9842055757"
+    },
+    "statusHistory": [
+      {
+        "status": "Pending",
+        "updatedAt": "2026-08-04T17:40:51.503Z",
+        "_id": "6a722423bf483e8e037834e1"
+      }
+    ],
+    "createdAt": "2026-08-04T17:40:51.503Z",
+    "updatedAt": "2026-10-23T16:45:30.712Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a722467bf483e8e03783508",
+    "customer": "6a6f388383b712433290c570",
+    "items": [
+      {
+        "product": "6a258fd67e82aa641cd5d249",
+        "quantity": 1,
+        "price": 25,
+        "farmer": "69f4ad43e50f3aa5c813730a",
+        "_id": "6a722467bf483e8e03783509"
+      }
+    ],
+    "totalAmount": 75,
+    "paymentMethod": "COD",
+    "paymentStatus": "Pending",
+    "deliveryStatus": "Pending",
+    "shippingAddress": {
+      "address": "123 Main Street",
+      "city": "Local City",
+      "phone": "9842055757"
+    },
+    "statusHistory": [
+      {
+        "status": "Pending",
+        "updatedAt": "2026-08-04T17:41:59.362Z",
+        "_id": "6a722467bf483e8e0378350a"
+      }
+    ],
+    "createdAt": "2026-08-04T17:41:59.362Z",
+    "updatedAt": "2026-10-23T16:45:30.717Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adb8bc001794ae042dc9606",
+    "customer": "6a6f388383b712433290c570",
+    "items": [
+      {
+        "product": "6a3688f1a7a51b350ba16ca4",
+        "quantity": 1,
+        "price": 350,
+        "_id": "6adb8bc001794ae042dc9607"
+      }
+    ],
+    "totalAmount": 400,
+    "paymentMethod": "Online",
+    "paymentStatus": "Pending",
+    "deliveryStatus": "Pending",
+    "shippingAddress": {
+      "address": "123 Main Street",
+      "city": "Local City",
+      "phone": "9842055757"
+    },
+    "statusHistory": [
+      {
+        "status": "Pending",
+        "updatedAt": "2026-10-23T16:30:56.674Z",
+        "_id": "6adb8bc001794ae042dc9608"
+      }
+    ],
+    "createdAt": "2026-10-23T16:30:56.674Z",
+    "updatedAt": "2026-10-23T16:45:30.721Z",
+    "__v": 0
+  },
+  {
+    "_id": "6adb8bda01794ae042dc9613",
+    "customer": "6a6f388383b712433290c570",
+    "items": [
+      {
+        "product": "6a3688f1a7a51b350ba16ca4",
+        "quantity": 1,
+        "price": 350,
+        "_id": "6adb8bda01794ae042dc9614"
+      }
+    ],
+    "totalAmount": 400,
+    "paymentMethod": "Online",
+    "paymentStatus": "Pending",
+    "deliveryStatus": "Pending",
+    "shippingAddress": {
+      "address": "123 Main Street",
+      "city": "Local City",
+      "phone": "9842055757"
+    },
+    "statusHistory": [
+      {
+        "status": "Pending",
+        "updatedAt": "2026-10-23T16:31:22.222Z",
+        "_id": "6adb8bda01794ae042dc9615"
+      }
+    ],
+    "createdAt": "2026-10-23T16:31:22.222Z",
+    "updatedAt": "2026-10-23T16:45:30.724Z",
+    "__v": 0
+  }
+]

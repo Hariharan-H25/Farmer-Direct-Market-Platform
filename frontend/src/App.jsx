@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
-import { Phone, Mail, ExternalLink, Globe } from 'lucide-react';
+import { Phone, Mail, ShieldCheck } from 'lucide-react';
 import Navbar from './components/Navbar';
 import AIChatbot from './components/AIChatbot';
 
@@ -98,22 +98,20 @@ function App() {
               </ul>
             </div>
 
-            {/* Column 4: Official Reference / Partner Link */}
+            {/* Column 4: 100% Direct Market Guarantee */}
             <div className="bg-[#18271e] p-6 rounded-2xl border border-emerald-900/50 space-y-4">
               <h4 className="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                <Globe size={16} className="text-primary" /> Inspiration Partner
+                <ShieldCheck size={16} className="text-primary" /> Direct Market Promise
               </h4>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Referencing top-tier agriculture portals like BigHaat to bring Indian farmers state-of-the-art agricultural technology and tools.
+                100% direct trade between verified farmers and consumers. Zero middlemen commission ensures fresh produce at fair and transparent prices.
               </p>
-              <a
-                href="https://www.bighaat.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-xs font-black bg-primary text-white hover:bg-primary-dark transition-colors px-4 py-2.5 rounded-xl shadow-lg shadow-primary/10 w-full justify-center"
+              <Link
+                to="/products"
+                className="inline-flex items-center gap-2 text-xs font-black bg-primary text-white hover:bg-[#0c4a29] transition-colors px-4 py-2.5 rounded-xl shadow-lg shadow-primary/10 w-full justify-center"
               >
-                Visit BigHaat Official <ExternalLink size={12} />
-              </a>
+                Explore Marketplace
+              </Link>
             </div>
           </div>
 

@@ -1,3 +1,5 @@
+import dns from 'node:dns';
+try { dns.setServers(['8.8.8.8', '8.8.4.4']); } catch (_) {}
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -141,19 +143,28 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/farmconnect_v2';
 
+// Connect to MongoDB
 mongoose
   .connect(MONGO_URI)
   .then(() => {
-    logger.info(`✅ MongoDB Connected: ${MONGO_URI}`);
-    server.listen(PORT, () => {
-      logger.info(`🚀 FarmConnect Server running on port: ${PORT}`);
-      logger.info(`📖 API Documentation available at http://localhost:${PORT}/api-docs`);
-      logger.info(`🩺 Health Check endpoint available at http://localhost:${PORT}/health`);
-    });
+    logger.info(`✅ MongoDB Connected`);
+    // Only start HTTP listener in non-serverless environments (local dev)
+    if (process.env.VERCEL !== '1') {
+      server.listen(PORT, () => {
+        logger.info(`🚀 FarmConnect Server running on port: ${PORT}`);
+        logger.info(`📖 API Docs: http://localhost:${PORT}/api-docs`);
+        logger.info(`🩺 Health Check: http://localhost:${PORT}/health`);
+      });
+    }
   })
   .catch((error) => {
     logger.error(`❌ DB Connection Error: ${error.message}`);
-    console.log(`💡 TIP: Make sure MongoDB is running (e.g., 'net start MongoDB') or check MONGO_URI in .env`);
+    console.log(`💡 TIP: Make sure MongoDB is running or check MONGO_URI in .env`);
   });
 
+// Named exports for local dev & tests
 export { app, server };
+
+// Default export for Vercel serverless (@vercel/node uses this)
+export default app;
+

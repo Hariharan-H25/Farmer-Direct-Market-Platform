@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Sprout, Plus, Minus, Trash2, ShoppingBag, CheckCircle, 
   Clock, User, Phone, MapPin, DollarSign, 
-  Package, PlusCircle, Loader2 
+  Package, PlusCircle, Loader2, Download
 } from 'lucide-react';
-import { fetchProducts, createProduct, deleteProduct, updateProductStock, fetchOrders } from '../api';
+import { fetchProducts, createProduct, deleteProduct, updateProductStock, fetchOrders, downloadSalesReportCSV } from '../api';
 import socket from '../socket';
 
 const categoryPresets = {
@@ -200,6 +200,21 @@ const FarmerDashboard = () => {
 
   const activeOrdersCount = orders.filter(o => o.deliveryStatus === 'Processing').length;
 
+  const handleDownloadCSV = async () => {
+    try {
+      const response = await downloadSalesReportCSV();
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Farmer_Sales_Report_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert("Failed to export sales CSV: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc]/50 p-4 md:p-10 space-y-12">
       {realtimeToast && (
@@ -218,7 +233,7 @@ const FarmerDashboard = () => {
           <div className="relative z-10 space-y-6 max-w-4xl">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">
               <Sprout size={14} className="text-emerald-300 animate-pulse" />
-              Farmer Partner Panel
+              Farmer Producer Portal
             </div>
             
             <div className="space-y-4">
@@ -295,34 +310,43 @@ const FarmerDashboard = () => {
           </div>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex border-b border-slate-200 gap-8">
+        {/* Tab Selection & Export Bar */}
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-200 gap-4">
+          <div className="flex gap-8">
+            <button 
+              onClick={() => setActiveTab('inventory')}
+              className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${
+                activeTab === 'inventory' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              My Listings ({products.length})
+              {activeTab === 'inventory' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            </button>
+            <button 
+              onClick={() => setActiveTab('add')}
+              className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${
+                activeTab === 'add' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              List New Product
+              {activeTab === 'add' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            </button>
+            <button 
+              onClick={() => setActiveTab('orders')}
+              className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${
+                activeTab === 'orders' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              Recent Orders ({orders.length})
+              {activeTab === 'orders' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            </button>
+          </div>
+
           <button 
-            onClick={() => setActiveTab('inventory')}
-            className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${
-              activeTab === 'inventory' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
-            }`}
+            onClick={handleDownloadCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 rounded-xl font-bold text-sm transition-all mb-2 cursor-pointer shadow-sm"
           >
-            My Listings ({products.length})
-            {activeTab === 'inventory' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('add')}
-            className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${
-              activeTab === 'add' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            List New Product
-            {activeTab === 'add' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('orders')}
-            className={`pb-4 font-bold text-lg transition-colors relative cursor-pointer ${
-              activeTab === 'orders' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            Recent Orders ({orders.length})
-            {activeTab === 'orders' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full" />}
+            <Download size={16} /> Export Sales CSV
           </button>
         </div>
 

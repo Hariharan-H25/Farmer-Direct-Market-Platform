@@ -214,15 +214,6 @@ const Home = () => {
     { name: 'Specialty', img: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=200&h=200&fit=crop', desc: 'Protected growth covers' },
   ];
 
-  const brands = [
-    'https://images.unsplash.com/photo-1599305090598-fe179d501227?w=100&h=100&fit=crop',
-    'https://images.unsplash.com/photo-1564858066579-2479e0008068?w=100&h=100&fit=crop',
-    'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=100&h=100&fit=crop',
-    'https://images.unsplash.com/photo-1559196307-e81880e6fc85?w=100&h=100&fit=crop',
-    'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?w=100&h=100&fit=crop',
-    'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=100&h=100&fit=crop',
-  ];
-
   const currentKural = agricultureKurals[currentKuralIndex];
 
   return (
@@ -756,15 +747,26 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 9. Top Brands Carousel/Scroller */}
+      {/* 9. Direct Farm Quality Standards */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h3 className="text-sm font-black text-center text-gray-400 uppercase tracking-widest mb-8">Our Manufacturing & Brand Partners</h3>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-6 items-center">
-          {brands.map((brand, i) => (
-            <div key={i} className="bg-white border border-gray-150 p-4 rounded-xl flex items-center justify-center h-20 shadow-sm hover:shadow-md transition-shadow grayscale hover:grayscale-0 cursor-pointer">
-              <img src={brand} alt={`Brand ${i}`} className="w-full h-full object-contain" />
-            </div>
-          ))}
+        <h3 className="text-sm font-black text-center text-gray-400 uppercase tracking-widest mb-8">Direct Farm Quality Standards</h3>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-center">
+          {[
+            { label: '100% Direct Harvest', icon: Sprout },
+            { label: 'Zero Middlemen', icon: HeartHandshake },
+            { label: 'Verified Farmers', icon: ShieldCheck },
+            { label: 'Quality Assured', icon: Award },
+            { label: 'Express Delivery', icon: Truck },
+            { label: 'Transparent Pricing', icon: CheckCircle2 },
+          ].map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <div key={i} className="bg-white border border-gray-100 p-4 rounded-xl flex flex-col items-center justify-center gap-2 h-24 shadow-sm hover:shadow-md hover:border-primary/30 transition-all text-center">
+                <Icon size={24} className="text-primary" />
+                <span className="text-xs font-bold text-gray-700">{item.label}</span>
+              </div>
+            );
+          })}
         </div>
       </section>
 
