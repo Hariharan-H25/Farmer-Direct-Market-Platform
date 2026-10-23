@@ -5,8 +5,11 @@ import { authenticateUser, authorizeBuyer } from '../middleware/auth.js';
 
 const router = express.Router();
 
+import os from 'os';
+
+const uploadDir = (process.env.VERCEL || process.env.NODE_ENV === 'production') ? os.tmpdir() : 'uploads/';
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });

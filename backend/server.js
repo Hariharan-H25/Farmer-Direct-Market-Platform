@@ -36,7 +36,7 @@ app.use(mongoSanitize());
 // Rate Limiting
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 150,
+  max: 300,
   message: { message: 'Too many requests from this IP, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -44,7 +44,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 50,
   message: { message: 'Too many authentication attempts, please try again after 15 minutes' },
 });
 
@@ -62,16 +62,19 @@ app.use(express.urlencoded({ limit: '30mb', extended: true }));
 
 // CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
   : ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      // or if origin is explicitly in allowed list, or in non-production
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o)) || process.env.NODE_ENV !== 'production') {
         callback(null, true);
       } else {
-        callback(new Error('CORS policy restriction: origin not allowed'));
+        // In serverless, avoid rejecting preflights aggressively
+        callback(null, true);
       }
     },
     credentials: true,
@@ -87,7 +90,40 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB connection with caching (important for serverless cold starts)
+// Root welcome route
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    name: 'FarmConnect API',
+    version: '2.0.0',
+    platform: process.env.VERCEL ? 'Vercel Serverless' : 'Local Node.js',
+    documentation: '/api-docs',
+    health: '/api/health'
+  });
+});
+
+// Health check (responds immediately, provides DB connection state)
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    db: mongoose.connection.readyState === 1 ? 'connected' : (mongoose.connection.readyState === 2 ? 'connecting' : 'disconnected'),
+    version: '2.0.0',
+    platform: process.env.VERCEL ? 'Vercel Serverless' : 'Local Node.js'
+  });
+});
+
+// Legacy health route
+app.use('/health', healthRoutes);
+
+// Swagger API Docs (safe setup)
+try {
+  setupSwagger(app);
+} catch (swaggerErr) {
+  logger.warn('Swagger initialization skipped: ' + swaggerErr.message);
+}
+
+// MongoDB connection with caching (optimized for serverless cold starts)
 let cachedConnection = null;
 
 const connectDB = async () => {
@@ -95,7 +131,17 @@ const connectDB = async () => {
     return cachedConnection;
   }
   const MONGO_URI = process.env.MONGO_URI;
-  if (!MONGO_URI) throw new Error('MONGO_URI environment variable is not set');
+  if (!MONGO_URI) {
+    logger.error('MONGO_URI is not defined in environment variables');
+    throw new Error('MONGO_URI environment variable is not set');
+  }
+  
+  if (mongoose.connection.readyState === 2) {
+    // Already connecting, wait briefly
+    await new Promise(resolve => setTimeout(resolve, 500));
+    if (mongoose.connection.readyState === 1) return mongoose.connection;
+  }
+
   cachedConnection = await mongoose.connect(MONGO_URI, {
     serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
@@ -103,33 +149,22 @@ const connectDB = async () => {
   return cachedConnection;
 };
 
-// DB connection middleware — runs before every API request
-app.use(async (req, res, next) => {
+// DB connection middleware for all API data routes
+app.use('/api', async (req, res, next) => {
+  // Skip DB requirement for health check
+  if (req.path === '/health') return next();
+
   try {
     await connectDB();
     next();
   } catch (err) {
-    logger.error('DB connection failed: ' + err.message);
-    res.status(503).json({ message: 'Database connection failed. Please try again.' });
+    logger.error('Database connection failed: ' + err.message);
+    res.status(503).json({
+      message: 'Database connection failed. Please try again.',
+      error: process.env.NODE_ENV !== 'production' ? err.message : undefined
+    });
   }
 });
-
-// Health check (works even without DB)
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    version: '2.0.0',
-    platform: 'Vercel Serverless'
-  });
-});
-
-// Legacy health route
-app.use('/health', healthRoutes);
-
-// Swagger API Docs
-setupSwagger(app);
 
 // Core API Routes
 app.use('/api/auth', authRoutes);
@@ -152,8 +187,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Local dev server (not used on Vercel)
-if (process.env.VERCEL !== '1') {
+// Local dev server (only runs outside Vercel serverless)
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   import('http').then(({ default: http }) => {
     import('socket.io').then(({ Server }) => {
       const server = http.createServer(app);

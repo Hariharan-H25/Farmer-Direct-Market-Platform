@@ -8,8 +8,11 @@ import {
   getSmartRecommendations 
 } from '../controllers/aiController.js';
 
+import os from 'os';
+
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const uploadDir = (process.env.VERCEL || process.env.NODE_ENV === 'production') ? os.tmpdir() : 'uploads/';
+const upload = multer({ dest: uploadDir });
 
 router.post('/chat', chatBot);
 router.post('/diagnose-crop', upload.single('cropImage'), diagnoseCropDisease);
