@@ -3,7 +3,17 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "routes/**",
+          "controllers/**",
+          "models/**",
+          "middleware/**",
+          "utils/**",
+          "swagger.js"
+        ]
+      }
     }
   ],
   "routes": [

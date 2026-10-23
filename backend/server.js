@@ -1,11 +1,10 @@
 import dns from 'node:dns';
 try { dns.setServers(['8.8.8.8', '8.8.4.4']); } catch (_) {}
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import http from 'http';
-import { Server } from 'socket.io';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -28,38 +27,13 @@ import farmerRoutes from './routes/farmerRoutes.js';
 dotenv.config();
 
 const app = express();
-const server = http.createServer(app);
-
-// Socket.io Real-time WebSockets
-const io = new Server(server, {
-  cors: {
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
-  },
-});
-
-io.on('connection', (socket) => {
-  logger.info(`⚡ Client connected to Socket.IO WebSocket: ${socket.id}`);
-
-  socket.on('join_user_room', (userId) => {
-    if (userId) socket.join(`user_${userId}`);
-  });
-
-  socket.on('join_farmer_room', (farmerId) => {
-    if (farmerId) socket.join(`farmer_${farmerId}`);
-  });
-
-  socket.on('disconnect', () => {
-    logger.info(`🔥 Client disconnected: ${socket.id}`);
-  });
-});
 
 // Security & Performance Middleware
-app.use(helmet({ contentSecurityPolicy: false })); // Helmet for HTTP security headers
-app.use(compression()); // Gzip compression
-app.use(mongoSanitize()); // Prevent NoSQL injection attacks
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
+app.use(mongoSanitize());
 
-// Rate Limiting — 150 requests per 15 minutes per IP for general API
+// Rate Limiting
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 150,
@@ -68,7 +42,6 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Stricter rate limiting for authentication (15 requests per 15 minutes)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
@@ -79,18 +52,18 @@ app.use('/api/', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
-// HTTP Request Logging via Morgan -> Winston stream
+// HTTP Request Logging
 const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat, { stream: logger.stream }));
 
-// Body Parser Middleware
+// Body Parser
 app.use(express.json({ limit: '30mb' }));
 app.use(express.urlencoded({ limit: '30mb', extended: true }));
 
-// CORS setup
+// CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:80'];
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(
   cors({
@@ -105,18 +78,57 @@ app.use(
   })
 );
 
+// Static uploads
 app.use('/uploads', express.static('uploads'));
 
-// Inject Socket.io into req object for controllers
+// Socket.io stub for Vercel (no persistent WebSocket in serverless)
 app.use((req, res, next) => {
-  req.io = io;
+  req.io = { emit: () => {}, to: () => ({ emit: () => {} }) };
   next();
 });
 
-// Monitoring Health Endpoint
+// MongoDB connection with caching (important for serverless cold starts)
+let cachedConnection = null;
+
+const connectDB = async () => {
+  if (cachedConnection && mongoose.connection.readyState === 1) {
+    return cachedConnection;
+  }
+  const MONGO_URI = process.env.MONGO_URI;
+  if (!MONGO_URI) throw new Error('MONGO_URI environment variable is not set');
+  cachedConnection = await mongoose.connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+  });
+  return cachedConnection;
+};
+
+// DB connection middleware — runs before every API request
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    logger.error('DB connection failed: ' + err.message);
+    res.status(503).json({ message: 'Database connection failed. Please try again.' });
+  }
+});
+
+// Health check (works even without DB)
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    version: '2.0.0',
+    platform: 'Vercel Serverless'
+  });
+});
+
+// Legacy health route
 app.use('/health', healthRoutes);
 
-// Setup Swagger API Documentation UI (/api-docs)
+// Swagger API Docs
 setupSwagger(app);
 
 // Core API Routes
@@ -125,7 +137,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orders', orderRoutes);
 
-// Phase 4 Routes - AI, Weather, Market Intelligence, Farmer Maps
+// Phase 4 Routes
 app.use('/api/ai', aiRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/market', marketRoutes);
@@ -140,31 +152,42 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/farmconnect_v2';
-
-// Connect to MongoDB
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
-    logger.info(`✅ MongoDB Connected`);
-    // Only start HTTP listener in non-serverless environments (local dev)
-    if (process.env.VERCEL !== '1') {
-      server.listen(PORT, () => {
-        logger.info(`🚀 FarmConnect Server running on port: ${PORT}`);
-        logger.info(`📖 API Docs: http://localhost:${PORT}/api-docs`);
-        logger.info(`🩺 Health Check: http://localhost:${PORT}/health`);
+// Local dev server (not used on Vercel)
+if (process.env.VERCEL !== '1') {
+  import('http').then(({ default: http }) => {
+    import('socket.io').then(({ Server }) => {
+      const server = http.createServer(app);
+      const io = new Server(server, {
+        cors: {
+          origin: allowedOrigins,
+          methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
+        },
       });
-    }
-  })
-  .catch((error) => {
-    logger.error(`❌ DB Connection Error: ${error.message}`);
-    console.log(`💡 TIP: Make sure MongoDB is running or check MONGO_URI in .env`);
+
+      io.on('connection', (socket) => {
+        logger.info(`⚡ Socket.IO connected: ${socket.id}`);
+        socket.on('join_user_room', (userId) => { if (userId) socket.join(`user_${userId}`); });
+        socket.on('join_farmer_room', (farmerId) => { if (farmerId) socket.join(`farmer_${farmerId}`); });
+        socket.on('disconnect', () => { logger.info(`🔥 Socket.IO disconnected: ${socket.id}`); });
+      });
+
+      // Override stub with real io
+      app.use((req, res, next) => { req.io = io; next(); });
+
+      const PORT = process.env.PORT || 5000;
+      const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/farmconnect_v2';
+
+      mongoose.connect(MONGO_URI).then(() => {
+        logger.info('✅ MongoDB Connected (local)');
+        server.listen(PORT, () => {
+          logger.info(`🚀 FarmConnect Server running on port: ${PORT}`);
+          logger.info(`📖 API Docs: http://localhost:${PORT}/api-docs`);
+        });
+      }).catch((error) => {
+        logger.error(`❌ DB Connection Error: ${error.message}`);
+      });
+    });
   });
+}
 
-// Named exports for local dev & tests
-export { app, server };
-
-// Default export for Vercel serverless (@vercel/node uses this)
 export default app;
-
