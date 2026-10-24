@@ -1,6 +1,20 @@
 import express from 'express';
 import multer from 'multer';
-import { login, register, logout, getProfile, updateProfile, getWishlist, addToWishlist, removeFromWishlist } from '../controllers/authController.js';
+import { 
+  login, 
+  register, 
+  verifyOTP, 
+  resendOTP, 
+  logout, 
+  getProfile, 
+  updateProfile, 
+  getSavedAddresses, 
+  addSavedAddress, 
+  deleteSavedAddress, 
+  getWishlist, 
+  addToWishlist, 
+  removeFromWishlist 
+} from '../controllers/authController.js';
 import { authenticateUser, authorizeBuyer } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -16,11 +30,18 @@ const upload = multer({ storage });
 
 router.post('/login', login);
 router.post('/register', upload.single('produceImage'), register);
+router.post('/verify-otp', verifyOTP);
+router.post('/resend-otp', resendOTP);
 router.post('/logout', logout);
 
 // Profile endpoints
 router.get('/profile', authenticateUser, getProfile);
 router.put('/profile', authenticateUser, updateProfile);
+
+// Saved Delivery Addresses (Swiggy/Zomato style)
+router.get('/addresses', authenticateUser, getSavedAddresses);
+router.post('/addresses', authenticateUser, addSavedAddress);
+router.delete('/addresses/:addressId', authenticateUser, deleteSavedAddress);
 
 // Wishlist endpoints
 router.get('/wishlist', authenticateUser, getWishlist);

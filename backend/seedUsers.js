@@ -129,6 +129,30 @@ const users = [
     role: 'customer',
     isVerified: true,
   },
+
+  // ─── Delivery Personnel ────────────────────────────────────
+  {
+    name: 'Karthik Selvan',
+    email: 'karthik@delivery.com',
+    password: 'delivery123',
+    phone: '9876543210',
+    role: 'delivery',
+    isVerified: true,
+    isAuthorized: true,
+    accountStatus: 'Active',
+    location: { district: 'Erode', state: 'Tamil Nadu' }
+  },
+  {
+    name: 'Manoj Kumar',
+    email: 'manoj@delivery.com',
+    password: 'delivery123',
+    phone: '9876543211',
+    role: 'delivery',
+    isVerified: true,
+    isAuthorized: true,
+    accountStatus: 'Active',
+    location: { district: 'Coimbatore', state: 'Tamil Nadu' }
+  }
 ];
 
 const productsToSeed = [

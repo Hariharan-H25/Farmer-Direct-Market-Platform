@@ -9,7 +9,10 @@ describe('Auth API Endpoints', () => {
   });
 
   const testUser = {
+    firstName: 'Jest',
+    lastName: 'Test User',
     name: 'Jest Test User',
+    phone: '9876543210',
     email: `jest_test_${Date.now()}@example.com`,
     password: 'password123',
     role: 'buyer',

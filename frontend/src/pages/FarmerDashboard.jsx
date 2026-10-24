@@ -693,13 +693,58 @@ const FarmerDashboard = () => {
                               <span className="font-black text-primary text-lg block">₹{farmerSubtotal}</span>
                               <span className="text-slate-400 font-bold text-xs">Method: {o.paymentMethod}</span>
                             </td>
-                            <td className="px-8 py-6 text-right">
+                            <td className="px-8 py-6 text-right space-y-2">
                               <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
-                                o.deliveryStatus === 'Processing' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                                o.deliveryStatus === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                o.deliveryStatus === 'Out for Delivery' ? 'bg-blue-100 text-blue-700' :
+                                o.deliveryStatus === 'Pickup Pending' ? 'bg-purple-100 text-purple-700' :
+                                o.deliveryStatus === 'Farmer Preparing' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'
                               }`}>
-                                {o.deliveryStatus === 'Processing' ? <Clock size={12} /> : <CheckCircle size={12} />}
                                 {o.deliveryStatus}
                               </span>
+
+                              {/* Assigned Delivery Driver Details */}
+                              {o.deliveryPerson && (
+                                <div className="text-[11px] text-gray-500 font-medium text-right">
+                                  <span>Partner: <strong>{o.deliveryPerson.name}</strong></span>
+                                  {o.deliveryPerson.phone && <span className="block text-gray-400">{o.deliveryPerson.phone}</span>}
+                                </div>
+                              )}
+
+                              {/* Workflow Transition Buttons */}
+                              <div className="flex justify-end gap-2 pt-1">
+                                {(o.deliveryStatus === 'Pending' || o.deliveryStatus === 'Confirmed') && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await updateOrderStatus(o._id, { deliveryStatus: 'Farmer Preparing' });
+                                        loadData();
+                                      } catch (err) {
+                                        alert("Failed to update status: " + (err.response?.data?.message || err.message));
+                                      }
+                                    }}
+                                    className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                                  >
+                                    Prepare Harvest &rarr;
+                                  </button>
+                                )}
+
+                                {o.deliveryStatus === 'Farmer Preparing' && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await updateOrderStatus(o._id, { deliveryStatus: 'Pickup Pending' });
+                                        loadData();
+                                      } catch (err) {
+                                        alert("Failed to update status: " + (err.response?.data?.message || err.message));
+                                      }
+                                    }}
+                                    className="px-3 py-1 bg-primary hover:bg-[#0c4a29] text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                                  >
+                                    Ready for Pickup ✓
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

@@ -23,6 +23,7 @@ import aiRoutes from './routes/aiRoutes.js';
 import weatherRoutes from './routes/weatherRoutes.js';
 import marketRoutes from './routes/marketRoutes.js';
 import farmerRoutes from './routes/farmerRoutes.js';
+import deliveryRoutes from './routes/deliveryRoutes.js';
 
 dotenv.config();
 
@@ -172,11 +173,12 @@ app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orders', orderRoutes);
 
-// Phase 4 Routes
+// Phase 4 & Logistics Routes
 app.use('/api/ai', aiRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/farmers', farmerRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
@@ -187,11 +189,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Local dev server (only runs outside Vercel serverless)
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+let server = { close: (cb) => { if (cb) cb(); } };
+
+// Local dev server (only runs outside Vercel serverless and outside test runner)
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.NODE_ENV !== 'test') {
   import('http').then(({ default: http }) => {
     import('socket.io').then(({ Server }) => {
-      const server = http.createServer(app);
+      server = http.createServer(app);
       const io = new Server(server, {
         cors: {
           origin: allowedOrigins,
@@ -203,6 +207,7 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
         logger.info(`⚡ Socket.IO connected: ${socket.id}`);
         socket.on('join_user_room', (userId) => { if (userId) socket.join(`user_${userId}`); });
         socket.on('join_farmer_room', (farmerId) => { if (farmerId) socket.join(`farmer_${farmerId}`); });
+        socket.on('join_delivery_room', (deliveryId) => { if (deliveryId) socket.join(`delivery_${deliveryId}`); });
         socket.on('disconnect', () => { logger.info(`🔥 Socket.IO disconnected: ${socket.id}`); });
       });
 
@@ -225,4 +230,5 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   });
 }
 
+export { app, server };
 export default app;

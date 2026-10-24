@@ -10,6 +10,7 @@
           "controllers/**",
           "models/**",
           "middleware/**",
+          "services/**",
           "utils/**",
           "swagger.js"
         ]

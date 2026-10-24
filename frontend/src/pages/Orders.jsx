@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Clock, CheckCircle2, Truck, ShoppingBag, FileText, ArrowRight, X } from 'lucide-react';
-import { fetchBuyerOrders, fetchOrderInvoice } from '../api';
+import { Package, Clock, CheckCircle2, Truck, ShoppingBag, FileText, ArrowRight, X, Radio, Phone, MapPin } from 'lucide-react';
+import { fetchBuyerOrders, fetchOrderInvoice, fetchOrderTracking } from '../api';
 import { useLanguage } from '../context/LanguageContext';
+import DeliveryMap from '../components/DeliveryMap';
+import socket from '../socket';
 
 const Orders = () => {
   const { t } = useLanguage();
@@ -11,8 +13,13 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
+  // Live Tracking Modal State
+  const [trackingOrder, setTrackingOrder] = useState(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
   const profile = localStorage.getItem('profile');
   const user = profile ? JSON.parse(profile) : null;
+  const userId = user?.result?._id || user?.id;
 
   useEffect(() => {
     if (!user) {
@@ -33,7 +40,76 @@ const Orders = () => {
     };
 
     loadOrders();
-  }, [user, navigate]);
+
+    // Real-time socket room and updates
+    if (userId) {
+      socket.emit('join_user_room', userId);
+    }
+
+    const handleLocationUpdate = (payload) => {
+      setTrackingOrder(prev => {
+        if (prev && prev.orderId === payload.orderId) {
+          return {
+            ...prev,
+            liveLocation: payload.liveLocation,
+            estimatedArrivalMinutes: payload.estimatedArrivalMinutes,
+            deliveryStatus: payload.deliveryStatus || prev.deliveryStatus
+          };
+        }
+        return prev;
+      });
+    };
+
+    const handleStatusUpdate = (updatedOrder) => {
+      setOrders(prev => prev.map(o => (o._id === updatedOrder._id ? updatedOrder : o)));
+      setTrackingOrder(prev => {
+        if (prev && prev.orderId === updatedOrder._id) {
+          return {
+            ...prev,
+            deliveryStatus: updatedOrder.deliveryStatus,
+            statusHistory: updatedOrder.statusHistory
+          };
+        }
+        return prev;
+      });
+    };
+
+    socket.on('delivery_location_update', handleLocationUpdate);
+    socket.on('order_status_updated', handleStatusUpdate);
+
+    return () => {
+      socket.off('delivery_location_update', handleLocationUpdate);
+      socket.off('order_status_updated', handleStatusUpdate);
+    };
+  }, [user, userId, navigate]);
+
+  const handleTrackOrder = async (orderId) => {
+    setLoadingTracking(true);
+    try {
+      const { data } = await fetchOrderTracking(orderId);
+      setTrackingOrder(data);
+    } catch (err) {
+      // Fallback tracking info from local order
+      const ord = orders.find(o => (o._id || o.id) === orderId);
+      if (ord) {
+        setTrackingOrder({
+          orderId: ord._id || ord.id,
+          deliveryStatus: ord.deliveryStatus || 'Pending',
+          totalAmount: ord.totalAmount,
+          shippingAddress: ord.shippingAddress,
+          pickupLocation: ord.pickupLocation,
+          liveLocation: ord.liveLocation,
+          estimatedArrivalMinutes: ord.estimatedArrivalMinutes,
+          deliveryPerson: ord.deliveryPerson,
+          statusHistory: ord.statusHistory || []
+        });
+      } else {
+        alert(err.response?.data?.message || "Failed to load tracking data.");
+      }
+    } finally {
+      setLoadingTracking(false);
+    }
+  };
 
   const handleViewInvoice = async (orderId) => {
     try {
@@ -156,8 +232,14 @@ const Orders = () => {
                     <span className="text-gray-400">•</span>
                     <span className="text-gray-500 dark:text-gray-400">{dateStr}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(order.orderStatus || order.status)}
+                  <div className="flex items-center gap-2.5">
+                    {getStatusBadge(order.deliveryStatus || order.orderStatus || order.status)}
+                    <button
+                      onClick={() => handleTrackOrder(orderId)}
+                      className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition-colors"
+                    >
+                      <Truck size={13} /> Live Tracking &amp; ETA
+                    </button>
                     <button
                       onClick={() => handleViewInvoice(orderId)}
                       className="inline-flex items-center gap-1 text-primary dark:text-emerald-400 font-bold hover:underline"
@@ -277,6 +359,103 @@ const Orders = () => {
               className="w-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-200 transition-colors"
             >
               Close Invoice
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Live Map & Order Tracking Modal */}
+      {trackingOrder && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-gray-200 dark:border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 rounded-xl">
+                  <Truck size={20} />
+                </span>
+                <div>
+                  <h3 className="font-black text-base text-gray-900 dark:text-white">
+                    Live Delivery Tracking
+                  </h3>
+                  <p className="text-xs text-gray-500 font-mono">
+                    Order #{trackingOrder.orderId?.slice(-8).toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setTrackingOrder(null)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Status Progress Stepper */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">
+                <span>Placed</span>
+                <span>Harvesting</span>
+                <span>Picked Up</span>
+                <span className={trackingOrder.deliveryStatus === 'Delivered' ? 'text-green-600' : ''}>Delivered</span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-primary h-full transition-all duration-500"
+                  style={{
+                    width: 
+                      trackingOrder.deliveryStatus === 'Delivered' ? '100%' :
+                      trackingOrder.deliveryStatus === 'Out for Delivery' ? '80%' :
+                      trackingOrder.deliveryStatus === 'Picked Up' ? '60%' :
+                      trackingOrder.deliveryStatus === 'Pickup Pending' ? '45%' :
+                      trackingOrder.deliveryStatus === 'Farmer Preparing' ? '30%' : '15%'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Interactive Map */}
+            <DeliveryMap
+              pickupLocation={trackingOrder.pickupLocation}
+              deliveryLocation={trackingOrder.shippingAddress?.location}
+              liveLocation={trackingOrder.liveLocation}
+              deliveryStatus={trackingOrder.deliveryStatus}
+              estimatedArrivalMinutes={trackingOrder.estimatedArrivalMinutes}
+            />
+
+            {/* Driver & Delivery Information */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-800">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Assigned Delivery Partner</span>
+                {trackingOrder.deliveryPerson ? (
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-gray-900 dark:text-white">{trackingOrder.deliveryPerson.name}</p>
+                    <p className="text-gray-500 flex items-center gap-1">
+                      <Phone size={11} /> {trackingOrder.deliveryPerson.phone || 'Protected Contact'}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-gray-400 italic">Farmer preparing produce. Assigning driver shortly...</p>
+                )}
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-800">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Dropoff Address</span>
+                <p className="font-bold text-gray-900 dark:text-white truncate">
+                  {trackingOrder.shippingAddress?.recipientName} ({trackingOrder.shippingAddress?.mobileNumber})
+                </p>
+                <p className="text-gray-500 truncate text-[11px]">
+                  {trackingOrder.shippingAddress?.houseFlat} {trackingOrder.shippingAddress?.streetArea}, {trackingOrder.shippingAddress?.city}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setTrackingOrder(null)}
+              className="w-full bg-primary hover:bg-[#0c4a29] text-white py-2.5 rounded-xl font-bold text-xs transition-colors"
+            >
+              Close Live Map
             </button>
           </div>
         </div>

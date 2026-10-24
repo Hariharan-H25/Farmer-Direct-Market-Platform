@@ -44,9 +44,16 @@ API.interceptors.response.use(
 
 export const signIn = (formData) => API.post('/auth/login', formData);
 export const signUp = (formData) => API.post('/auth/register', formData);
+export const verifyOTP = (otpData) => API.post('/auth/verify-otp', otpData);
+export const resendOTP = (emailData) => API.post('/auth/resend-otp', emailData);
 export const signOut = () => API.post('/auth/logout');
 export const fetchProfile = () => API.get('/auth/profile');
 export const updateProfile = (updatedData) => API.put('/auth/profile', updatedData);
+
+// Saved Addresses (Swiggy/Zomato style)
+export const fetchSavedAddresses = () => API.get('/auth/addresses');
+export const addSavedAddress = (addressData) => API.post('/auth/addresses', addressData);
+export const deleteSavedAddress = (addressId) => API.delete(`/auth/addresses/${addressId}`);
 
 export const fetchProducts = (params) => API.get('/products', { params });
 export const fetchProductById = (id) => API.get(`/products/${id}`);
@@ -73,6 +80,13 @@ export const updateOrderStatus = (id, statusData) => API.patch(`/orders/${id}/st
 export const cancelOrder = (id) => API.patch(`/orders/${id}/cancel`);
 export const requestReturn = (id, reasonData) => API.patch(`/orders/${id}/return`, reasonData);
 
+// Delivery & Live Tracking
+export const fetchDeliveryOrders = () => API.get('/delivery/orders');
+export const acceptDeliveryOrder = (id) => API.patch(`/delivery/orders/${id}/accept`);
+export const updateDeliveryStatus = (id, statusData) => API.patch(`/delivery/orders/${id}/status`, statusData);
+export const updateDeliveryLiveLocation = (id, locationData) => API.post(`/delivery/orders/${id}/location`, locationData);
+export const fetchOrderTracking = (id) => API.get(`/delivery/track/${id}`);
+
 // Payment Gateway: Razorpay & UPI
 export const createRazorpayOrder = (orderData) => API.post('/orders/razorpay-order', orderData);
 export const verifyRazorpayPayment = (paymentData) => API.post('/orders/verify-payment', paymentData);
@@ -81,11 +95,16 @@ export const verifyRazorpayPayment = (paymentData) => API.post('/orders/verify-p
 export const fetchOrderInvoice = (id) => API.get(`/orders/${id}/invoice`);
 export const downloadSalesReportCSV = () => API.get('/orders/export/csv', { responseType: 'blob' });
 
-export const fetchAllUsers = () => API.get('/admin/users');
+export const fetchAllUsers = (params) => API.get('/admin/users', { params });
+export const toggleUserStatus = (id, status) => API.patch(`/admin/users/${id}/status`, { status });
 export const verifyFarmer = (id) => API.patch(`/admin/verify/${id}`);
 export const deleteUser = (id) => API.delete(`/admin/users/${id}`);
 export const fetchAdminStats = () => API.get('/admin/stats');
 export const fetchFarmerStats = () => API.get('/admin/farmer-stats');
+export const fetchDeliveryPersonnel = () => API.get('/admin/delivery-personnel');
+export const createDeliveryPersonnel = (data) => API.post('/admin/delivery-personnel', data);
+export const assignDeliveryToOrder = (data) => API.post('/admin/assign-delivery', data);
+export const fetchAuditLogs = () => API.get('/admin/audit-logs');
 
 // Phase 4 - AI Features
 export const chatWithBot = (message, language) => API.post('/ai/chat', { message, language });

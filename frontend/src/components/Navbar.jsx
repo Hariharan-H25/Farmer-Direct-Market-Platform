@@ -200,6 +200,17 @@ const Navbar = () => {
                           </Link>
                         )}
 
+                        {(userRole === 'delivery' || userRole === 'admin') && (
+                          <Link
+                            to="/delivery"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center px-3 py-2 text-primary dark:text-emerald-400 font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-colors"
+                          >
+                            <Truck size={16} className="mr-2.5" />
+                            Delivery Logistics Hub
+                          </Link>
+                        )}
+
                         <Link
                           to="/market"
                           onClick={() => setUserDropdownOpen(false)}

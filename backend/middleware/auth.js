@@ -60,6 +60,14 @@ export const authorizeBuyer = (req, res, next) => {
   next();
 };
 
+export const authorizeDelivery = (req, res, next) => {
+  if (req.userRole !== 'delivery' && req.userRole !== 'admin') {
+    logger.warn(`RBAC Forbidden: User ${req.userId} (Role: ${req.userRole}) attempted Delivery path ${req.originalUrl}`);
+    return res.status(403).json({ message: "Access denied. Delivery partner permissions required." });
+  }
+  next();
+};
+
 // Aliases for backwards compatibility
 export const auth = authenticateUser;
 export const adminAuth = (req, res, next) => {

@@ -77,18 +77,80 @@ export const createOrder = async (req, res) => {
       }
     }
 
+    // Explicit Delivery Fee Rule: Free delivery above ₹500, else ₹50
+    const calculatedDeliveryFee = calculatedTotal >= 500 ? 0 : 50;
+    const finalOrderAmount = totalAmount || (calculatedTotal + calculatedDeliveryFee);
+
+    // Resolve Farmer Pickup Location for delivery logistics
+    let pickupLocation = {
+      farmName: 'Local Organic Farm',
+      farmerName: 'Verified Farmer',
+      phone: '1800-3000-2434',
+      address: 'Agri Hub, Erode, Tamil Nadu',
+      district: 'Erode',
+      state: 'Tamil Nadu',
+      lat: 11.3410,
+      lng: 77.7172
+    };
+
+    const primaryFarmerId = formattedItems.find(i => i.farmer)?.farmer;
+    if (primaryFarmerId) {
+      const farmerUser = await User.findById(primaryFarmerId).select('name farmName phone address location');
+      if (farmerUser) {
+        pickupLocation = {
+          farmName: farmerUser.farmName || `${farmerUser.name}'s Farm`,
+          farmerName: farmerUser.name || 'Farmer',
+          phone: farmerUser.phone || 'N/A',
+          address: farmerUser.address || `${farmerUser.location?.district || 'Erode'}, ${farmerUser.location?.state || 'Tamil Nadu'}`,
+          district: farmerUser.location?.district || 'Erode',
+          state: farmerUser.location?.state || 'Tamil Nadu',
+          lat: farmerUser.location?.coordinates?.lat || 11.3410,
+          lng: farmerUser.location?.coordinates?.lng || 77.7172
+        };
+      }
+    }
+
+    // Format shipping address with fallback coordinates if location wasn't provided
+    const formattedShippingAddress = {
+      recipientName: shippingAddress?.recipientName || 'Customer',
+      mobileNumber: shippingAddress?.mobileNumber || shippingAddress?.phone || '9876543210',
+      houseFlat: shippingAddress?.houseFlat || '',
+      streetArea: shippingAddress?.streetArea || '',
+      city: shippingAddress?.city || 'City',
+      district: shippingAddress?.district || '',
+      state: shippingAddress?.state || 'Tamil Nadu',
+      pincode: shippingAddress?.pincode || '638001',
+      landmark: shippingAddress?.landmark || '',
+      deliveryInstructions: shippingAddress?.deliveryInstructions || '',
+      location: (shippingAddress?.location?.lat && shippingAddress?.location?.lng) ? {
+        lat: Number(shippingAddress.location.lat),
+        lng: Number(shippingAddress.location.lng)
+      } : {
+        lat: 11.3500 + (Math.random() * 0.02 - 0.01),
+        lng: 77.7250 + (Math.random() * 0.02 - 0.01)
+      },
+      address: shippingAddress?.address || `${shippingAddress?.houseFlat || ''} ${shippingAddress?.streetArea || ''}`.trim() || 'Customer Address',
+      phone: shippingAddress?.phone || shippingAddress?.mobileNumber || '9876543210'
+    };
+
     const newOrder = new Order({
       customer: req.userId,
       items: formattedItems,
-      totalAmount: totalAmount || calculatedTotal,
-      shippingAddress,
+      totalAmount: finalOrderAmount,
+      deliveryFee: calculatedDeliveryFee,
+      shippingAddress: formattedShippingAddress,
+      pickupLocation,
       paymentMethod: paymentMethod || 'COD',
       paymentStatus: paymentStatus || (paymentMethod === 'Online' ? 'Completed' : 'Pending'),
       razorpayOrderId: razorpayOrderId || '',
       razorpayPaymentId: razorpayPaymentId || '',
       razorpaySignature: razorpaySignature || '',
       deliveryStatus: 'Pending',
-      statusHistory: [{ status: 'Pending', updatedAt: new Date() }],
+      statusHistory: [{ 
+        status: 'Pending', 
+        note: 'Order placed by customer.',
+        updatedAt: new Date() 
+      }],
       createdAt: new Date().toISOString()
     });
 
