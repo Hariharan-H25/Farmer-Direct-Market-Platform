@@ -71,7 +71,7 @@ const Cart = () => {
     try {
       const { data } = await fetchOrderInvoice(placedOrder._id);
       setInvoiceData(data);
-    } catch (err) {
+    } catch {
       setInvoiceData({
         invoiceNumber: `INV-${placedOrder._id.slice(-8).toUpperCase()}`,
         invoiceDate: placedOrder.createdAt || new Date(),
@@ -170,7 +170,7 @@ const Cart = () => {
                         Tax Invoice
                       </span>
                       <p className="font-mono text-sm font-bold text-dark">{invoiceData?.invoiceNumber}</p>
-                      <p className="text-xs text-gray-400">{new Date(invoiceData?.invoiceDate || Date.now()).toLocaleDateString('en-IN')}</p>
+                      <p className="text-xs text-gray-400">{invoiceData?.invoiceDate ? new Date(invoiceData.invoiceDate).toLocaleDateString('en-IN') : 'Recent'}</p>
                     </div>
                   </div>
 

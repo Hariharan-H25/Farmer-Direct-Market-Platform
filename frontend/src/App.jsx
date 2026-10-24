@@ -16,6 +16,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const FarmerDashboard = lazy(() => import('./pages/FarmerDashboard'));
 const Cart = lazy(() => import('./pages/Cart'));
 const MarketIntelligence = lazy(() => import('./pages/MarketIntelligence'));
+const Orders = lazy(() => import('./pages/Orders'));
 
 // Loading skeleton shown while lazy pages fetch
 const PageLoader = () => (
@@ -45,6 +46,7 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/dashboard" element={<FarmerDashboard />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/orders" element={<Orders />} />
             <Route path="/market" element={<MarketIntelligence />} />
           </Routes>
         </Suspense>

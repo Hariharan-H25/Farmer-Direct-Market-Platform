@@ -112,7 +112,7 @@ const CropDiseaseDetector = ({ lang }) => {
 };
 
 const MarketIntelligence = () => {
-  const { lang, t } = useLanguage();
+  const { lang } = useLanguage();
   const [market, setMarket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('prices');

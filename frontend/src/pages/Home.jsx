@@ -204,14 +204,14 @@ const Home = () => {
   }, []);
 
   const categories = [
-    { name: 'Seeds', img: 'https://images.unsplash.com/photo-1593113543329-a1fc10bba131?w=200&h=200&fit=crop', desc: 'Hybrid & organic seeds' },
-    { name: 'Crop Protection', img: 'https://images.unsplash.com/photo-1582979512210-99b6a53386f9?w=200&h=200&fit=crop', desc: 'Fungicides & insect control' },
-    { name: 'Fertilizers', img: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=200&h=200&fit=crop', desc: 'Plant growth promoters' },
-    { name: 'Tools', img: 'https://images.unsplash.com/photo-1416879598555-220b8b2e35a1?w=200&h=200&fit=crop', desc: 'Hand tools & shears' },
-    { name: 'Irrigation', img: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=200&h=200&fit=crop', desc: 'Drip kits & sprinklers' },
-    { name: 'Farming Equip', img: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&h=200&fit=crop', desc: 'Sprayers & modern tools' },
-    { name: 'Organic', img: 'https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?w=200&h=200&fit=crop', desc: 'Bio-pest control & compost' },
-    { name: 'Specialty', img: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=200&h=200&fit=crop', desc: 'Protected growth covers' },
+    { name: 'Seeds', img: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=300&h=300&fit=crop', desc: 'Hybrid & organic seeds' },
+    { name: 'Crop Protection', img: 'https://images.unsplash.com/photo-1582979512210-99b6a53386f9?w=300&h=300&fit=crop', desc: 'Fungicides & insect control' },
+    { name: 'Fertilizers', img: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=300&h=300&fit=crop', desc: 'Plant growth promoters' },
+    { name: 'Tools', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=300&h=300&fit=crop', desc: 'Hand tools & shears' },
+    { name: 'Irrigation', img: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&h=300&fit=crop', desc: 'Drip kits & sprinklers' },
+    { name: 'Farming Equip', img: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=300&fit=crop', desc: 'Sprayers & modern tools' },
+    { name: 'Organic', img: 'https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?w=300&h=300&fit=crop', desc: 'Bio-pest control & compost' },
+    { name: 'Specialty', img: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=300&h=300&fit=crop', desc: 'Protected growth covers' },
   ];
 
   const currentKural = agricultureKurals[currentKuralIndex];
@@ -299,14 +299,22 @@ const Home = () => {
             View All Categories <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform"/>
           </Link>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4 sm:gap-6">
+        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-3 sm:gap-4 md:gap-6">
           {categories.map((cat, i) => (
-            <Link key={i} to={`/products?category=${cat.name}`} className="flex flex-col items-center group">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden mb-3.5 border-2 border-transparent group-hover:border-primary group-hover:shadow-lg group-hover:shadow-primary/10 transition-all duration-300 bg-gray-50 flex items-center justify-center p-0.5">
-                <img src={cat.img} alt={cat.name} className="w-full h-full object-cover rounded-full group-hover:scale-110 transition-transform duration-300" />
+            <Link key={i} to={`/products?category=${encodeURIComponent(cat.name)}`} className="flex flex-col items-center group">
+              <div className="w-14 h-14 sm:w-18 sm:h-18 md:w-22 md:h-22 rounded-full overflow-hidden mb-2 sm:mb-3 border-2 border-transparent group-hover:border-primary group-hover:shadow-lg group-hover:shadow-primary/10 transition-all duration-300 bg-gray-50 flex items-center justify-center p-0.5">
+                <img 
+                  src={cat.img} 
+                  alt={cat.name} 
+                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop';
+                  }}
+                />
               </div>
-              <h4 className="text-xs sm:text-sm text-center font-bold text-gray-800 group-hover:text-primary transition-colors">{cat.name}</h4>
-              <p className="text-[10px] text-gray-400 text-center font-medium mt-0.5 line-clamp-1 group-hover:text-gray-500">{cat.desc}</p>
+              <h4 className="text-[11px] sm:text-xs md:text-sm text-center font-bold text-gray-800 group-hover:text-primary transition-colors truncate max-w-full">{cat.name}</h4>
+              <p className="hidden sm:block text-[10px] text-gray-400 text-center font-medium mt-0.5 line-clamp-1 group-hover:text-gray-500">{cat.desc}</p>
             </Link>
           ))}
         </div>
@@ -707,13 +715,13 @@ const Home = () => {
         </div>
 
         {loadingProducts ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-6 animate-pulse">
             {Array.from({ length: 4 }).map((_, idx) => (
-              <div key={idx} className="bg-white rounded-xl h-96 border border-gray-100" />
+              <div key={idx} className="bg-white rounded-xl h-64 sm:h-96 border border-gray-100" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-6">
             {trendingProducts.map((product) => (
               <ProductCard key={product._id || product.id} product={product} />
             ))}

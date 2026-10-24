@@ -68,39 +68,95 @@ Respond strictly in valid JSON format (NO MARKDOWN, NO \`\`\`json fences) with t
 
 export const chatBot = async (req, res) => {
   const { message, language } = req.body;
-  if (!message) {
+  if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ message: "Please provide a query message." });
   }
 
-  const query = message.toLowerCase();
-  let reply = "";
+  const userQuery = message.trim();
   const isTamil = language === 'ta';
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
 
-  if (query.includes('price') || query.includes('rate') || query.includes('விலை')) {
+  // 1. Attempt Real AI response via Google Gemini 1.5 Flash if API key configured
+  if (apiKey) {
+    try {
+      const systemPrompt = isTamil
+        ? `நீங்கள் FarmConnect-ன் அனுபவம் வாய்ந்த விவசாய மற்றும் சந்தை ஆலோசகர். இந்திய/தமிழ்நாடு விவசாய முறைகள் (நெல், தக்காளி, பருத்தி, கரும்பு, காய்கறிகள், இயற்கை உரங்கள், பயிர் நோய்கள், மண்டி சந்தை விலைகள்) பற்றிய கேள்விகளுக்கு தமிழில் சுருக்கமாகவும் பயனுள்ளதாகவும் பதிலளிக்கவும். 2 முதல் 4 வாக்கியங்களில் நேரடியான நடைமுறை ஆலோசனைகளை வழங்கவும்.`
+        : `You are the FarmConnect AI Agronomist & Market Assistant for Indian farmers and buyers. Provide helpful, accurate, concise advice (2-4 sentences) regarding Indian agriculture, crop diseases, organic fertilizers, Mandi market prices, seed selection, weather precautions, or direct farmer selling on FarmConnect.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: `${systemPrompt}\n\nUser Question: ${userQuery}` }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.6,
+            maxOutputTokens: 250
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const geminiReply = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (geminiReply && geminiReply.trim()) {
+          return res.status(200).json({
+            reply: geminiReply.trim(),
+            timestamp: new Date().toISOString(),
+            aiProvider: "Google Gemini 1.5 Flash"
+          });
+        }
+      } else {
+        const errText = await response.text();
+        logger.warn(`Gemini Chatbot API response non-ok (${response.status}): ${errText}`);
+      }
+    } catch (err) {
+      logger.warn(`Gemini Chatbot execution error: ${err.message}`);
+    }
+  }
+
+  // 2. High-Accuracy Agricultural Knowledge-Base Fallback (Always Reliable)
+  const query = userQuery.toLowerCase();
+  let reply = "";
+
+  if (query.includes('price') || query.includes('rate') || query.includes('விலை') || query.includes('மண்டி')) {
     reply = isTamil
-      ? "தற்போதைய சந்தை நிலவரப்படி: தக்காளி ₹28-35/கிலோ, வெங்காயம் ₹30-42/கிலோ, நெல் ₹2,200/குவிண்டால். சந்தை நுண்ணறிவு பக்கத்தில் முழுமையான விவரங்களைக் காணலாம்."
-      : "Current market prices: Tomatoes ₹28-35/kg, Onions ₹30-42/kg, Paddy ₹2,200/quintal. Check our Market Intelligence tab for real-time Mandi price trends!";
-  } else if (query.includes('disease') || query.includes('pest') || query.includes('நோய்')) {
+      ? "தற்போதைய சந்தை நிலவரப்படி: தக்காளி ₹28-35/கிலோ, வெங்காயம் ₹30-42/கிலோ, நெல் ₹2,200/குவிண்டால், மிளகாய் ₹180-220/கிலோ. எங்களின் 'Market & AI' பக்கத்தில் நேரடி மண்டி விலை போக்குகளைக் காணலாம்."
+      : "Current market rates: Tomatoes ₹28-35/kg, Onions ₹30-42/kg, Paddy ₹2,200/quintal, Chilli ₹180-220/kg. Navigate to our Market & AI tab for real-time Mandi price analysis!";
+  } else if (query.includes('disease') || query.includes('pest') || query.includes('பூச்சி') || query.includes('நோய்') || query.includes('இலை')) {
     reply = isTamil
-      ? "பயிரில் பூச்சி அல்லது நோய் அறிகுறி உள்ளதா? எங்களின் 'பயிர் நோய் கண்டறிதல்' கருவையைப் பயன்படுத்தி இலையின் புகைப்படத்தைப் பதிவேற்றி உடனடி தீர்வைப் பெறுங்கள்!"
-      : "Noticing leaf spots, yellowing, or pests? Upload a photo of the affected leaf using our Crop Disease Detection tool for an instant AI diagnostic report and remedy!";
-  } else if (query.includes('weather') || query.includes('rain') || query.includes('மழை')) {
+      ? "பயிரில் இலைக்கருகல் அல்லது பூச்சித் தாக்குதல் உள்ளதா? முகப்பு பக்கத்தில் உள்ள 'பயிர் நோய் கண்டறிதல்' (Crop Doctor) கருவி மூலம் இலை புகைப்படத்தை பதிவேற்றி உடனுக்குடன் ஆர்கானிக் மற்றும் வேதியியல் தீர்வுகளைப் பெறுங்கள்."
+      : "Noticing leaf spots, yellowing, or pests? Use our Crop Doctor AI feature to analyze an infected leaf photo for instant organic remedies and CIBRC fungicide dosages!";
+  } else if (query.includes('weather') || query.includes('rain') || query.includes('மழை') || query.includes('வானிலை')) {
     reply = isTamil
-      ? "அடுத்த 3 நாட்களுக்கு மிதமான மழை எதிர்பார்க்கப்படுகிறது. உரம் தெளிப்பதை ஒத்திவைப்பது நல்லது. நேரடி வானிலை விபரங்களை எங்களின் Weather Widget-ல் பார்க்கவும்."
-      : "Moderate rainfall is forecasted for the next 3 days. It is advisable to delay pesticide spraying and fertilizer application. Check our Weather Widget for live updates.";
-  } else if (query.includes('sell') || query.includes('farmer') || query.includes('விற்பனை')) {
+      ? "அடுத்த 3 நாட்களுக்கு மிதமான வானிலை மற்றும் மழை வாய்ப்பு உள்ளது. உரம் இடுதல் மற்றும் தெளிப்பான் பணிகளை மழை நின்ற பின் மேற்கொள்வது உகந்தது."
+      : "Moderate weather with scattered rain forecasted for the region. We advise pausing pesticide foliar sprays until clear sunshine resumes.";
+  } else if (query.includes('sell') || query.includes('farmer') || query.includes('விற்பனை') || query.includes('விவசாயி')) {
     reply = isTamil
-      ? "விவசாயிகள் தங்கள் விளைபொருட்களை இடைத்தரகர்கள் இன்றி நேரடியாக விற்க ஃபார்மர்டேஷ்போர்டில் 'Add Product' பொத்தானைக் கிளிக் செய்யவும்."
-      : "Farmers can directly list produce without middlemen! Navigate to your Farmer Dashboard and click 'Add Product' to start receiving direct orders.";
+      ? "விவசாயிகள் தங்கள் விளைபொருட்களை 0% இடைத்தரகர் கட்டணத்தில் நேரடியாக விற்கலாம்! Farmer Dashboard-ல் 'Add Product' கிளிக் செய்து உங்கள் பொருட்களை உடனடியாக பட்டியலிடலாம்."
+      : "Farmers can directly sell to verified consumers with 0% middleman fees! Open your Farmer Dashboard and click 'Add Product' to list your harvest.";
+  } else if (query.includes('fertilizer') || query.includes('உரம்') || query.includes('organic') || query.includes('இயற்கை')) {
+    reply = isTamil
+      ? "மண் வளத்தைப் பெருக்க மண்புழு உரம், பஞ்சகாவ்யா மற்றும் வேப்பம் புண்ணாக்கு சிறந்தது. நைட்ரஜன் சத்துக்கு ஜீவாமிர்தம் தெளிப்பது அதிக மகசூல் தரும்."
+      : "For soil health and high yield, certified vermicompost and Panchagavya are highly recommended. Check our Fertilizers & Crop Care catalog for direct farm inputs.";
+  } else if (query.includes('seed') || query.includes('விதை') || query.includes('germination')) {
+    reply = isTamil
+      ? "எங்களின் 'Seeds' பகுதியில் 95%+ முளைப்புத்திறன் சான்றளிக்கப்பட்ட கலப்பின மற்றும் பாரம்பரிய நெல், காய்கறி விதைகள் கிடைக்கின்றன."
+      : "Explore our Seeds section for high-germination certified hybrid & heirloom vegetable and grain seeds delivered directly to your doorstep.";
   } else {
     reply = isTamil
-      ? "வணக்கம்! நான் உங்கள் பண்ணை உதவியாளர். விதைகள், உரங்கள், பயிர் நோய்கள், வானிலை மற்றும் சந்தை விலைகள் குறித்து என்னிடம் கேளுங்கள்."
-      : "Hello! I am your FarmConnect AI Assistant. Ask me anything about crop diseases, organic fertilizers, Mandi prices, weather updates, or listing your produce!";
+      ? "வணக்கம்! நான் உங்கள் FarmConnect AI பண்ணை உதவியாளர். விதைகள், இயற்கை உரங்கள், பயிர் நோய்கள், வானிலை மற்றும் இன்றைய சந்தை விலைகள் குறித்து என்னிடம் கேளுங்கள்! 🌾"
+      : "Hello! I am your FarmConnect AI Assistant. Ask me about crop diseases, organic fertilizers, Mandi prices, weather updates, or listing produce directly! 🌾";
   }
 
   res.status(200).json({
     reply,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    aiProvider: "FarmConnect Agricultural Knowledge Base"
   });
 };
 

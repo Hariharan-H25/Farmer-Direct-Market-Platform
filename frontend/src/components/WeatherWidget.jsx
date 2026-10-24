@@ -13,10 +13,10 @@ const WeatherIcon = ({ condition }) => {
 };
 
 const WeatherWidget = ({ compact = false }) => {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [city, setCity] = useState('Erode, Tamil Nadu');
+  const [city] = useState('Erode, Tamil Nadu');
 
   useEffect(() => {
     const fetchWeather = async () => {
