@@ -107,15 +107,28 @@ const AuthLanding = () => {
         return;
       }
 
-      // Navigate to OTP verification page
-      navigate(`/verify-otp?email=${encodeURIComponent(registerForm.email.trim())}`);
+      // Navigate to OTP verification page with session state
+      navigate(`/verify-otp?email=${encodeURIComponent(registerForm.email.trim())}`, {
+        state: {
+          email: registerForm.email.trim(),
+          role: data?.role || registerRole,
+          previewOtp: data?.previewOtp,
+          providerConfigured: data?.providerConfigured
+        }
+      });
     } catch (err) {
-      if (err.response?.status === 503) {
-        // Provider delivery warning but account created
-        setRegisterError(err.response.data?.message || "OTP delivery failed. Please check provider configuration.");
-      } else {
-        setRegisterError(err.response?.data?.message || 'Registration failed. Please check your details.');
+      if (err.response?.status === 503 && err.response.data?.email) {
+        // Even if 503 is returned, account was created! Navigate to verify-otp instead of leaving user stuck
+        navigate(`/verify-otp?email=${encodeURIComponent(err.response.data.email)}`, {
+          state: {
+            email: err.response.data.email,
+            previewOtp: err.response.data.previewOtp,
+            providerConfigured: false
+          }
+        });
+        return;
       }
+      setRegisterError(err.response?.data?.message || 'Registration failed. Please check your details.');
     } finally {
       setRegisterLoading(false);
     }

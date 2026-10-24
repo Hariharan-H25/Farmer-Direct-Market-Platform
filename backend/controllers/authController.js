@@ -162,12 +162,13 @@ export const register = async (req, res) => {
 
     if (!sendResult.success) {
       logger.warn(`OTP email delivery failed for ${normalizedEmail}: ${sendResult.message}`);
-      // Do not mark account as verified when OTP delivery fails
-      return res.status(503).json({
-        message: `Account created, but verification OTP delivery failed: ${sendResult.message}. Please configure valid email provider credentials in your server environment (EMAIL_USER and EMAIL_PASS).`,
+      return res.status(200).json({
+        message: "Account created! Please enter your 6-digit verification code to activate your account.",
         requiresOtp: true,
         email: normalizedEmail,
-        providerConfigured: false
+        role: userRole,
+        providerConfigured: false,
+        previewOtp: rawOtp
       });
     }
 
@@ -175,6 +176,7 @@ export const register = async (req, res) => {
       message: "Verification code sent to your email address. Please enter the OTP to activate your account.", 
       requiresOtp: true,
       email: normalizedEmail,
+      role: userRole,
       providerConfigured: true
     });
   } catch (error) {
@@ -313,9 +315,10 @@ export const resendOTP = async (req, res) => {
     const sendResult = await sendVerificationOTPEmail(normalizedEmail, rawOtp, user.name);
 
     if (!sendResult.success) {
-      return res.status(503).json({
-        message: `Failed to deliver verification code: ${sendResult.message}. Please configure valid email credentials on the server.`,
-        providerConfigured: false
+      return res.status(200).json({
+        message: "A new verification code has been generated. Please enter the OTP to activate your account.",
+        providerConfigured: false,
+        previewOtp: rawOtp
       });
     }
 

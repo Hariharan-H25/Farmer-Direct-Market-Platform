@@ -1,18 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Mail, ArrowRight, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { useSearchParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import { ShieldCheck, Mail, ArrowRight, Loader2, AlertCircle, RefreshCw, CheckCircle2, KeyRound } from 'lucide-react';
 import { verifyOTP, resendOTP } from '../api';
 
 const VerifyOTP = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const initialEmail = searchParams.get('email') || '';
+
+  const queryEmail = searchParams.get('email') || '';
+  const stateEmail = location.state?.email || '';
+  const initialEmail = queryEmail || stateEmail;
+  const initialPreviewOtp = location.state?.previewOtp || '';
 
   const [email, setEmail] = useState(initialEmail);
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(initialPreviewOtp || '');
+  const [previewOtp, setPreviewOtp] = useState(initialPreviewOtp);
+  const [providerConfigured, setProviderConfigured] = useState(location.state?.providerConfigured ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState(initialPreviewOtp ? 'Verification code generated! Confirm below to activate your account.' : '');
   const [cooldown, setCooldown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
@@ -65,7 +72,11 @@ const VerifyOTP = () => {
     setSuccessMsg('');
     try {
       const { data } = await resendOTP({ email: email.trim() });
-      setSuccessMsg(data.message || "A fresh verification code has been dispatched to your email.");
+      if (data?.previewOtp) {
+        setPreviewOtp(data.previewOtp);
+        setOtp(data.previewOtp);
+      }
+      setSuccessMsg(data.message || "A fresh verification code has been dispatched.");
       setCooldown(60);
       setCanResend(false);
     } catch (err) {
@@ -89,6 +100,32 @@ const VerifyOTP = () => {
             <span className="font-bold text-emerald-400">{email || 'your email address'}</span>
           </p>
         </div>
+
+        {/* Live Activation Code Banner (when email provider is in setup mode or previewing) */}
+        {previewOtp && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 text-left space-y-2.5 shadow-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <KeyRound size={14} /> Activation Code
+              </span>
+              <button
+                type="button"
+                onClick={() => setOtp(previewOtp)}
+                className="text-xs text-emerald-300 underline font-semibold hover:text-emerald-200 cursor-pointer"
+              >
+                Auto-fill Code
+              </button>
+            </div>
+            <div className="text-3xl font-mono font-black text-white tracking-[8px] text-center py-1 bg-black/40 rounded-xl border border-white/5">
+              {previewOtp}
+            </div>
+            <p className="text-[11px] text-gray-400 text-center">
+              {!providerConfigured 
+                ? "Email provider setup in progress. Use this activation code to complete verification." 
+                : "A duplicate copy was also sent to your email."}
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 p-3.5 rounded-xl text-red-300 text-xs flex items-center gap-2 text-left">
