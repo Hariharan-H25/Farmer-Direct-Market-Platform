@@ -151,8 +151,8 @@ const connectDB = async () => {
 
 // DB connection middleware for all API data routes
 app.use('/api', async (req, res, next) => {
-  // Skip DB requirement for health check
-  if (req.path === '/health') return next();
+  // Skip DB requirement for health check, market trends, weather, and AI routes
+  if (req.path === '/health' || req.path.startsWith('/market') || req.path.startsWith('/weather') || req.path.startsWith('/ai')) return next();
 
   try {
     await connectDB();

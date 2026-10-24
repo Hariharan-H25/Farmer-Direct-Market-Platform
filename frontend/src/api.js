@@ -1,15 +1,26 @@
 import axios from 'axios';
 
-// In production (Vercel), use the full Render.com backend URL
-// In local dev, Vite proxy handles /api → localhost:5000
-const BASE_URL = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/api`
-  : '/api';
+// Default live cloud backend URL deployed on Vercel
+const CLOUD_BACKEND_URL = 'https://farmer-direct-market-platform-nfkk.vercel.app';
+
+// Always resolve to the valid backend URL across local dev, preview, and Vercel production
+const resolveApiBase = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    const trimmed = envUrl.trim();
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  }
+  return `${CLOUD_BACKEND_URL}/api`;
+};
+
+const BASE_URL = resolveApiBase();
 
 const API = axios.create({
   baseURL: BASE_URL,
   withCredentials: false,
 });
+
+export { API };
 
 API.interceptors.request.use((req) => {
   if (localStorage.getItem('profile')) {
