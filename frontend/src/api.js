@@ -35,7 +35,11 @@ API.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('profile');
       if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+        window.dispatchEvent(new CustomEvent('fc:unauthorized'));
+        // If not already on public landing or login page, redirect
+        if (window.location.pathname !== '/' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/';
+        }
       }
     }
     return Promise.reject(error);

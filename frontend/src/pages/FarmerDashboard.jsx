@@ -4,7 +4,7 @@ import {
   Clock, User, Phone, MapPin, DollarSign, 
   Package, PlusCircle, Loader2, Download
 } from 'lucide-react';
-import { fetchProducts, createProduct, deleteProduct, updateProductStock, fetchOrders, downloadSalesReportCSV } from '../api';
+import { fetchProducts, createProduct, deleteProduct, updateProductStock, fetchOrders, downloadSalesReportCSV, updateOrderStatus } from '../api';
 import socket from '../socket';
 
 const categoryPresets = {

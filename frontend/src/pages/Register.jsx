@@ -3,9 +3,14 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { signUp } from '../api';
 import { User, Mail, Phone, Lock, Home, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
 
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+
 const Register = () => {
   const [searchParams] = useSearchParams();
   const initialRole = searchParams.get('role') || 'customer';
+  const { login } = useAuth();
+  const { t } = useLanguage();
   
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: '', 
@@ -21,15 +26,34 @@ const Register = () => {
     setLoading(true);
     setError('');
 
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      setLoading(false);
+      return;
+    }
+
     const data = new FormData();
     Object.keys(formData).forEach(key => data.append(key, formData[key]));
     if (produceImage) data.append('produceImage', produceImage);
 
     try {
       const { data: responseData } = await signUp(data);
-      localStorage.setItem('profile', JSON.stringify(responseData));
-      navigate('/');
-      window.location.reload();
+
+      if (responseData?.token && responseData?.result) {
+        login(responseData);
+        const userRole = responseData.result.role;
+        if (userRole === 'farmer') navigate('/dashboard');
+        else navigate('/products');
+        return;
+      }
+
+      // Navigate to OTP verification page
+      navigate(`/verify-otp?email=${encodeURIComponent(formData.email.trim())}`, {
+        state: {
+          email: formData.email.trim(),
+          role: formData.role
+        }
+      });
     } catch (err) {
       if (err.code === 'ERR_NETWORK') {
         setError('Database connection error. Please ensure MongoDB is running.');
@@ -184,15 +208,15 @@ const Register = () => {
           >
             {loading ? <Loader2 className="animate-spin" size={28} /> : (
               <>
-                Create My Account <ChevronRight size={24} />
+                {t('createAccount') || 'Create My Account'} <ChevronRight size={24} />
               </>
             )}
           </button>
         </form>
 
         <p className="text-center text-gray-500 font-medium text-lg">
-          Already a member?{' '}
-          <Link to="/login" className="text-primary font-black hover:underline">Log in here</Link>
+          {t('alreadyHaveAccount') || 'Already a member?'}{' '}
+          <Link to="/login" className="text-primary font-black hover:underline">{t('signInHere') || 'Log in here'}</Link>
         </p>
       </div>
     </div>

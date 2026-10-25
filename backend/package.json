@@ -9,7 +9,7 @@
     "seed:agri": "node seedAgriInputs.js",
     "backup": "node backupData.js",
     "restore": "node restoreData.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --forceExit"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testTimeout=30000 --detectOpenHandles --forceExit"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

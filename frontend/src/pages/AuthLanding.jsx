@@ -8,6 +8,7 @@ import {
 import { signIn, signUp } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const AuthLanding = () => {
   const { lang, switchLanguage, t } = useLanguage();
@@ -37,6 +38,8 @@ const AuthLanding = () => {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState('');
 
+  const { login } = useAuth();
+
   const handleRoleRedirect = (userRole) => {
     switch (userRole) {
       case 'farmer':
@@ -63,10 +66,9 @@ const AuthLanding = () => {
 
     try {
       const { data } = await signIn(loginForm);
-      localStorage.setItem('profile', JSON.stringify(data));
+      login(data);
       const userRole = data?.result?.role || 'customer';
       handleRoleRedirect(userRole);
-      window.location.reload();
     } catch (err) {
       if (err.response?.data?.unverified) {
         navigate(`/verify-otp?email=${encodeURIComponent(loginForm.email.trim())}`);
@@ -101,33 +103,19 @@ const AuthLanding = () => {
 
       // If in automated test mode and returns token directly
       if (data?.token && data?.result) {
-        localStorage.setItem('profile', JSON.stringify(data));
+        login(data);
         handleRoleRedirect(data.result.role);
-        window.location.reload();
         return;
       }
 
-      // Navigate to OTP verification page with session state
+      // Navigate to OTP verification page without exposing OTP
       navigate(`/verify-otp?email=${encodeURIComponent(registerForm.email.trim())}`, {
         state: {
           email: registerForm.email.trim(),
-          role: data?.role || registerRole,
-          previewOtp: data?.previewOtp,
-          providerConfigured: data?.providerConfigured
+          role: data?.role || role
         }
       });
     } catch (err) {
-      if (err.response?.status === 503 && err.response.data?.email) {
-        // Even if 503 is returned, account was created! Navigate to verify-otp instead of leaving user stuck
-        navigate(`/verify-otp?email=${encodeURIComponent(err.response.data.email)}`, {
-          state: {
-            email: err.response.data.email,
-            previewOtp: err.response.data.previewOtp,
-            providerConfigured: false
-          }
-        });
-        return;
-      }
       setRegisterError(err.response?.data?.message || 'Registration failed. Please check your details.');
     } finally {
       setRegisterLoading(false);

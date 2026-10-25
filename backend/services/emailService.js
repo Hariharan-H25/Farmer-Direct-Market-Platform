@@ -1,8 +1,47 @@
 import nodemailer from 'nodemailer';
 
-// Configure transporter using env variables or fallback test account
+// Configure transporter using env variables
 const createTransporter = () => {
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  // 1. SendGrid SMTP
+  if (process.env.SENDGRID_API_KEY) {
+    return nodemailer.createTransport({
+      host: 'smtp.sendgrid.net',
+      port: 587,
+      auth: {
+        user: 'apikey',
+        pass: process.env.SENDGRID_API_KEY
+      }
+    });
+  }
+
+  // 2. Resend SMTP
+  if (process.env.RESEND_API_KEY) {
+    return nodemailer.createTransport({
+      host: 'smtp.resend.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: 'resend',
+        pass: process.env.RESEND_API_KEY
+      }
+    });
+  }
+
+  // 3. Custom / Standard SMTP
+  if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    return nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: Number(process.env.EMAIL_PORT) || 587,
+      secure: Number(process.env.EMAIL_PORT) === 465,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+  }
+
+  // 4. Gmail or service-based SMTP
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS && process.env.EMAIL_USER !== 'your_email@gmail.com') {
     return nodemailer.createTransport({
       service: process.env.EMAIL_SERVICE || 'gmail',
       auth: {
@@ -11,6 +50,7 @@ const createTransporter = () => {
       }
     });
   }
+
   return null;
 };
 
@@ -18,7 +58,7 @@ export const sendOrderEmail = async (toEmail, subject, contentHtml) => {
   try {
     const transporter = createTransporter();
     if (!transporter) {
-      console.log(`[Email Service Simulation] To: ${toEmail} | Subject: ${subject}`);
+      console.warn(`[Email Service Notice] Email sending skipped (provider not configured). Destination: ${toEmail}`);
       return;
     }
 
@@ -30,9 +70,9 @@ export const sendOrderEmail = async (toEmail, subject, contentHtml) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✉️ Email sent successfully to ${toEmail}: ${info.messageId}`);
+    console.log(`✉️ Order notification email sent to ${toEmail} (MessageId: ${info.messageId})`);
   } catch (error) {
-    console.error(`❌ Email sending error: ${error.message}`);
+    console.error(`❌ Order email delivery error: ${error.message}`);
   }
 };
 
@@ -44,48 +84,59 @@ export const sendOrderConfirmationEmail = async (order, customerEmail) => {
   ).join('');
 
   const html = `
-    <div style="font-family: Arial, sans-serif; padding: 20px; color: #1a202c; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; rounded: 12px;">
-      <h2 style="color: #166534;">🎉 Order Confirmation - FarmConnect</h2>
-      <p>Thank you for buying directly from Indian farmers!</p>
-      <p><strong>Order ID:</strong> #${order._id}</p>
-      <p><strong>Total Amount:</strong> ₹${order.totalAmount}</p>
-      <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1a202c; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <h2 style="color: #0F5A32; margin-top: 0;">🎉 Order Confirmation - FarmConnect</h2>
+      <p>Thank you for buying directly from verified Indian farmers!</p>
+      <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
+        <p style="margin: 4px 0;"><strong>Order ID:</strong> #${order._id}</p>
+        <p style="margin: 4px 0;"><strong>Total Amount:</strong> ₹${order.totalAmount}</p>
+        <p style="margin: 4px 0;"><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+        <p style="margin: 4px 0;"><strong>Delivery Status:</strong> ${order.deliveryStatus || 'Pending'}</p>
+      </div>
       <h3>Items Ordered:</h3>
-      <ul>${itemsList}</ul>
-      <p style="margin-top: 20px; font-size: 12px; color: #718096;">FarmConnect Platform - Connecting Farmers Directly to Consumers</p>
+      <ul style="padding-left: 20px; line-height: 1.6;">${itemsList}</ul>
+      <p style="margin-top: 24px; font-size: 12px; color: #718096; border-top: 1px solid #edf2f7; padding-top: 12px;">
+        FarmConnect Platform &bull; Empowering Local Agriculture
+      </p>
     </div>
   `;
 
-  await sendOrderEmail(customerEmail, `Order Confirmation #${order._id}`, html);
+  await sendOrderEmail(customerEmail, `FarmConnect Order Confirmation #${order._id}`, html);
 };
 
 export const sendOrderStatusUpdateEmail = async (order, customerEmail, newStatus) => {
   if (!customerEmail) return;
 
   const html = `
-    <div style="font-family: Arial, sans-serif; padding: 20px; color: #1a202c; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; rounded: 12px;">
-      <h2 style="color: #166534;">📦 Order Status Update - #${order._id}</h2>
-      <p>Your order status has been updated to: <strong style="color: #059669; font-size: 18px;">${newStatus}</strong></p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1a202c; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <h2 style="color: #0F5A32; margin-top: 0;">📦 Order Status Update - #${order._id}</h2>
+      <p>Your order status has been updated to: <strong style="color: #059669; font-size: 16px;">${newStatus}</strong></p>
       <p><strong>Total Amount:</strong> ₹${order.totalAmount}</p>
-      <p>Track your order status on your FarmConnect Dashboard anytime.</p>
+      <p style="margin-top: 16px;">You can track real-time delivery status and route directly in your FarmConnect orders dashboard.</p>
+      <p style="margin-top: 24px; font-size: 12px; color: #718096; border-top: 1px solid #edf2f7; padding-top: 12px;">
+        FarmConnect Platform &bull; Connecting Farmers Directly to Consumers
+      </p>
     </div>
   `;
 
-  await sendOrderEmail(customerEmail, `Order Status Update: ${newStatus} (#${order._id})`, html);
+  await sendOrderEmail(customerEmail, `FarmConnect Order Update: ${newStatus} (#${order._id})`, html);
 };
 
 export const sendVerificationOTPEmail = async (toEmail, otp, recipientName = 'User') => {
   if (!toEmail) {
-    return { success: false, error: 'MISSING_RECIPIENT', message: 'Recipient email is required.' };
+    return { 
+      success: false, 
+      error: 'MISSING_RECIPIENT', 
+      message: 'Recipient email address is required.' 
+    };
   }
 
   const transporter = createTransporter();
   if (!transporter) {
-    console.warn(`[OTP Email Warning] No real email provider configured. EMAIL_USER and EMAIL_PASS are missing or empty.`);
     return { 
       success: false, 
       error: 'PROVIDER_NOT_CONFIGURED', 
-      message: 'Email provider is not configured on the server. Please set valid EMAIL_USER and EMAIL_PASS credentials.' 
+      message: 'Email delivery is not configured on the server. Please configure EMAIL_USER and EMAIL_PASS (or RESEND_API_KEY / SENDGRID_API_KEY) in the server environment variables.' 
     };
   }
 
@@ -96,10 +147,10 @@ export const sendVerificationOTPEmail = async (toEmail, otp, recipientName = 'Us
         <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Direct Farmer-to-Consumer Marketplace</p>
       </div>
 
-      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px 20px; text-align: center; margin-bottom: 24px;">
         <p style="font-size: 14px; color: #166534; font-weight: 600; margin: 0 0 8px 0;">Hello ${recipientName},</p>
         <p style="font-size: 13px; color: #374151; margin: 0 0 16px 0;">Your FarmConnect registration verification code is:</p>
-        <div style="display: inline-block; background: #ffffff; border: 2px dashed #0F5A32; border-radius: 12px; padding: 12px 32px; letter-spacing: 8px; font-size: 32px; font-weight: 800; color: #0F5A32; font-family: monospace;">
+        <div style="display: inline-block; background: #ffffff; border: 2px dashed #0F5A32; border-radius: 12px; padding: 12px 36px; letter-spacing: 8px; font-size: 32px; font-weight: 800; color: #0F5A32; font-family: monospace;">
           ${otp}
         </div>
         <p style="font-size: 12px; color: #6b7280; margin: 16px 0 0 0;">This code is valid for <strong>10 minutes</strong>. Never share this code with anyone.</p>
@@ -116,12 +167,12 @@ export const sendVerificationOTPEmail = async (toEmail, otp, recipientName = 'Us
     const mailOptions = {
       from: process.env.EMAIL_FROM || '"FarmConnect Security" <no-reply@farmconnect.com>',
       to: toEmail,
-      subject: `Your FarmConnect Verification Code: ${otp}`,
+      subject: `Your FarmConnect Verification Code`,
       html: html
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✉️ Verification OTP successfully sent to ${toEmail} (MessageId: ${info.messageId})`);
+    console.log(`✉️ Verification OTP successfully accepted by provider for delivery to ${toEmail} (MessageId: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error(`❌ Verification OTP delivery failed to ${toEmail}: ${error.message}`);

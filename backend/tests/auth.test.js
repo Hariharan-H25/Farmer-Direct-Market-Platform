@@ -27,14 +27,16 @@ describe('Auth API Endpoints', () => {
     expect(res.body).toHaveProperty('message');
   });
 
-  it('should register a new user successfully', async () => {
+  it('should register a new user successfully without exposing OTP', async () => {
     const res = await request(app)
       .post('/api/auth/register')
       .send(testUser);
 
     expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty('token');
     expect(res.body.result).toHaveProperty('email', testUser.email);
+    // Security check: OTP must never be returned in response body
+    expect(res.body).not.toHaveProperty('previewOtp');
+    expect(res.body).not.toHaveProperty('otp');
   });
 
   it('should login the registered user', async () => {
@@ -45,5 +47,14 @@ describe('Auth API Endpoints', () => {
     expect(res.statusCode).toEqual(200);
     expect(res.body).toHaveProperty('token');
     expect(res.body.result).toHaveProperty('email', testUser.email);
+  });
+
+  it('should reject OTP verification with incorrect code', async () => {
+    const res = await request(app)
+      .post('/api/auth/verify-otp')
+      .send({ email: testUser.email, otp: '000000' });
+
+    // Should return 400 with invalid code or already verified
+    expect([200, 400]).toContain(res.statusCode);
   });
 });

@@ -162,22 +162,19 @@ export const register = async (req, res) => {
 
     if (!sendResult.success) {
       logger.warn(`OTP email delivery failed for ${normalizedEmail}: ${sendResult.message}`);
-      return res.status(200).json({
-        message: "Account created! Please enter your 6-digit verification code to activate your account.",
-        requiresOtp: true,
+      return res.status(503).json({
+        message: sendResult.message || "Failed to send verification code to your email. Please contact administrator or configure server email settings.",
+        requiresOtp: false,
         email: normalizedEmail,
-        role: userRole,
-        providerConfigured: false,
-        previewOtp: rawOtp
+        error: sendResult.error
       });
     }
 
     res.status(201).json({ 
-      message: "Verification code sent to your email address. Please enter the OTP to activate your account.", 
+      message: "A verification code has been sent to your email address. Please check your inbox and enter the OTP to activate your account.", 
       requiresOtp: true,
       email: normalizedEmail,
-      role: userRole,
-      providerConfigured: true
+      role: userRole
     });
   } catch (error) {
     logger.error('Registration error: ' + error.message);
@@ -315,16 +312,14 @@ export const resendOTP = async (req, res) => {
     const sendResult = await sendVerificationOTPEmail(normalizedEmail, rawOtp, user.name);
 
     if (!sendResult.success) {
-      return res.status(200).json({
-        message: "A new verification code has been generated. Please enter the OTP to activate your account.",
-        providerConfigured: false,
-        previewOtp: rawOtp
+      return res.status(503).json({
+        message: sendResult.message || "Failed to deliver verification code to your email address. Please try again later.",
+        error: sendResult.error
       });
     }
 
     res.status(200).json({ 
-      message: "A new verification code has been sent to your email address.",
-      providerConfigured: true
+      message: "A fresh verification code has been sent to your email address."
     });
   } catch (error) {
     logger.error('Resend OTP error: ' + error.message);

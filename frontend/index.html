@@ -7,11 +7,29 @@
     <meta name="description" content="FarmConnect - A direct marketplace connecting local organic farmers with customers. Buy fresh fruits, vegetables, grains, spices, and dairy directly from the farm." />
     <meta name="keywords" content="organic food, farmers market, buy direct from farmers, fresh produce, farm fresh milk, local vegetables" />
     <title>FarmConnect | Direct Farmer-to-Consumer Organic Marketplace</title>
+
+    <!-- Immediate Theme & Language Initialization (Eliminates FOUC / wrong theme flash) -->
+    <script>
+      (function() {
+        try {
+          var savedTheme = localStorage.getItem('fc_theme');
+          var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = savedTheme ? savedTheme : (systemDark ? 'dark' : 'light');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          var savedLang = localStorage.getItem('fc_lang') || 'en';
+          document.documentElement.lang = savedLang;
+        } catch (_) {}
+      })();
+    </script>
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts with Tamil Glyph Support -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>
