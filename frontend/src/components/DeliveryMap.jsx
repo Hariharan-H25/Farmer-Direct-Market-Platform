@@ -1,9 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Clock, ShieldCheck, Navigation, AlertCircle, MapPin } from 'lucide-react';
+import { Clock, ShieldCheck, Navigation, AlertCircle, MapPin, Radio, WifiOff } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+
+// Helper to compute direct distance in kilometers using Haversine formula
+const calculateDirectDistanceKm = (lat1, lon1, lat2, lon2) => {
+  if (typeof lat1 !== 'number' || typeof lon1 !== 'number' || typeof lat2 !== 'number' || typeof lon2 !== 'number') {
+    return null;
+  }
+  const toRad = deg => (deg * Math.PI) / 180;
+  const R = 6371; // Earth radius in km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+};
 
 // Custom Marker Icons for Leaflet
 const createCustomIcon = (bgColor, emoji) => {
@@ -54,32 +70,60 @@ const DeliveryMap = ({
   const [routeInfo, setRouteInfo] = useState({ distanceKm: null, durationMins: null });
   const [routeLoading, setRouteLoading] = useState(false);
 
-  const hasPickup = typeof pickupLocation?.lat === 'number' && typeof pickupLocation?.lng === 'number';
-  const hasDelivery = typeof deliveryLocation?.lat === 'number' && typeof deliveryLocation?.lng === 'number';
-  const hasLive = typeof liveLocation?.lat === 'number' && typeof liveLocation?.lng === 'number';
+  const hasPickup = typeof pickupLocation?.lat === 'number' && typeof pickupLocation?.lng === 'number' && !isNaN(pickupLocation.lat) && !isNaN(pickupLocation.lng);
+  const hasDelivery = typeof deliveryLocation?.lat === 'number' && typeof deliveryLocation?.lng === 'number' && !isNaN(deliveryLocation.lat) && !isNaN(deliveryLocation.lng);
+  const hasLive = typeof liveLocation?.lat === 'number' && typeof liveLocation?.lng === 'number' && !isNaN(liveLocation.lat) && !isNaN(liveLocation.lng);
   const hasAnyCoords = hasPickup || hasDelivery || hasLive;
+
+  // Stale location detection: if live location update is older than 2 minutes
+  const isLocationStale = hasLive && liveLocation?.updatedAt && 
+    (Date.now() - new Date(liveLocation.updatedAt).getTime() > 120000);
+
+  const minutesSinceUpdate = hasLive && liveLocation?.updatedAt
+    ? Math.max(1, Math.round((Date.now() - new Date(liveLocation.updatedAt).getTime()) / 60000))
+    : null;
 
   // Initialize and update Map instance
   useEffect(() => {
     if (!mapContainerRef.current) return;
+
+    // Guard against Leaflet container reinitialization crash
+    if (mapContainerRef.current._leaflet_id && !mapInstanceRef.current) {
+      delete mapContainerRef.current._leaflet_id;
+    }
 
     // Center point (defaults to central Tamil Nadu if no coords)
     const centerLat = liveLocation?.lat || pickupLocation?.lat || deliveryLocation?.lat || 11.1271;
     const centerLng = liveLocation?.lng || pickupLocation?.lng || deliveryLocation?.lng || 78.6569;
 
     if (!mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center: [centerLat, centerLng],
-        zoom: hasAnyCoords ? 12 : 7,
-        zoomControl: true,
-        scrollWheelZoom: false,
-        attributionControl: false
-      });
-
-      mapInstanceRef.current = map;
+      try {
+        const map = L.map(mapContainerRef.current, {
+          center: [centerLat, centerLng],
+          zoom: hasAnyCoords ? 12 : 7,
+          zoomControl: true,
+          scrollWheelZoom: false,
+          attributionControl: false
+        });
+        mapInstanceRef.current = map;
+      } catch (err) {
+        console.warn('Leaflet map initialization reset:', err.message);
+        if (mapContainerRef.current) {
+          delete mapContainerRef.current._leaflet_id;
+          const map = L.map(mapContainerRef.current, {
+            center: [centerLat, centerLng],
+            zoom: hasAnyCoords ? 12 : 7,
+            zoomControl: true,
+            scrollWheelZoom: false,
+            attributionControl: false
+          });
+          mapInstanceRef.current = map;
+        }
+      }
     }
 
     const map = mapInstanceRef.current;
+    if (!map) return;
 
     // Responsive tile theme: CartoDB Dark Matter for dark mode, OpenStreetMap for light mode
     if (tileLayerRef.current) {
@@ -133,33 +177,38 @@ const DeliveryMap = ({
     if (hasLive) {
       const pos = [liveLocation.lat, liveLocation.lng];
       activeBounds.push(pos);
+      const staleNotice = isLocationStale ? `<br/><span style="color:#ea580c;font-weight:bold;">⚠️ Signal paused (${minutesSinceUpdate}m ago)</span>` : '';
       if (markersRef.current.driver) {
         markersRef.current.driver.setLatLng(pos);
+        markersRef.current.driver.setPopupContent(`<b>🛵 ${t('assignedPartner')}</b><br/>Speed: ${liveLocation.speed || 0} km/h<br/>Status: ${deliveryStatus || 'Active'}${staleNotice}`);
       } else {
         markersRef.current.driver = L.marker(pos, { icon: driverIcon })
           .addTo(map)
-          .bindPopup(`<b>🛵 ${t('assignedPartner')}</b><br/>Speed: ${liveLocation.speed || 0} km/h<br/>Status: ${deliveryStatus || 'Active'}`);
+          .bindPopup(`<b>🛵 ${t('assignedPartner')}</b><br/>Speed: ${liveLocation.speed || 0} km/h<br/>Status: ${deliveryStatus || 'Active'}${staleNotice}`);
       }
     } else if (markersRef.current.driver) {
       map.removeLayer(markersRef.current.driver);
       delete markersRef.current.driver;
     }
 
-    // 4. Real Road Routing via OSRM
+    // 4. Real Road Routing via OSRM with fast timeout and reliable fallback
     if (hasPickup && hasDelivery) {
       setRouteLoading(true);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pickupLocation.lng},${pickupLocation.lat};${deliveryLocation.lng},${deliveryLocation.lat}?overview=full&geometries=geojson`;
 
-      fetch(osrmUrl)
+      fetch(osrmUrl, { signal: controller.signal })
         .then(res => res.json())
         .then(data => {
+          clearTimeout(timeoutId);
           if (data && data.routes && data.routes.length > 0) {
             const route = data.routes[0];
             const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
             const durationMins = Math.round(route.duration / 60);
             setRouteInfo({ distanceKm, durationMins });
 
-            // GeoJSON line coordinates are [lng, lat] -> convert to Leaflet [lat, lng]
             const lineCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
 
             if (polylineRef.current) {
@@ -177,11 +226,12 @@ const DeliveryMap = ({
               map.fitBounds(L.latLngBounds(lineCoords), { padding: [40, 40] });
             } catch (_) {}
           } else {
-            fallbackPolyline(map, activeBounds);
+            fallbackPolyline(map, activeBounds, pickupLocation, deliveryLocation);
           }
         })
         .catch(() => {
-          fallbackPolyline(map, activeBounds);
+          clearTimeout(timeoutId);
+          fallbackPolyline(map, activeBounds, pickupLocation, deliveryLocation);
         })
         .finally(() => {
           setRouteLoading(false);
@@ -206,9 +256,9 @@ const DeliveryMap = ({
     return () => {
       clearTimeout(resizeTimer);
     };
-  }, [pickupLocation, deliveryLocation, liveLocation, theme, hasPickup, hasDelivery, hasLive, deliveryStatus, t]);
+  }, [pickupLocation, deliveryLocation, liveLocation, theme, hasPickup, hasDelivery, hasLive, deliveryStatus, t, isLocationStale, minutesSinceUpdate]);
 
-  // Clean cleanup on component unmount to prevent Leaflet container reinitialization crash
+  // Clean cleanup on component unmount
   useEffect(() => {
     return () => {
       if (mapInstanceRef.current) {
@@ -218,10 +268,23 @@ const DeliveryMap = ({
         markersRef.current = {};
         polylineRef.current = null;
       }
+      if (mapContainerRef.current && mapContainerRef.current._leaflet_id) {
+        delete mapContainerRef.current._leaflet_id;
+      }
     };
   }, []);
 
-  const fallbackPolyline = (map, bounds) => {
+  const fallbackPolyline = (map, bounds, pLoc, dLoc) => {
+    // Compute distance and ETA even when online routing service is unavailable
+    if (pLoc && dLoc) {
+      const directKm = calculateDirectDistanceKm(pLoc.lat, pLoc.lng, dLoc.lat, dLoc.lng);
+      if (directKm !== null) {
+        const roadDistance = Math.round(directKm * 1.25 * 10) / 10;
+        const duration = Math.max(1, Math.round((roadDistance / 30) * 60));
+        setRouteInfo({ distanceKm: roadDistance, durationMins: duration });
+      }
+    }
+
     if (bounds.length >= 2) {
       if (polylineRef.current) {
         polylineRef.current.setLatLngs(bounds);
@@ -246,7 +309,7 @@ const DeliveryMap = ({
       {/* Map Status Bar */}
       <div className="bg-slate-900 text-white p-3.5 px-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className={`w-2.5 h-2.5 rounded-full ${isLocationStale ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`} />
           <span className="font-bold">
             {t('orderStatus')}: <span className="text-emerald-400">{t(deliveryStatus) || deliveryStatus || 'Active'}</span>
           </span>
@@ -275,6 +338,14 @@ const DeliveryMap = ({
           <span>OpenStreetMap Logistics</span>
         </div>
       </div>
+
+      {/* Stale Driver Location Warning */}
+      {isLocationStale && (
+        <div className="p-2.5 px-4 bg-amber-500/15 border-b border-amber-500/30 flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 font-medium">
+          <WifiOff size={14} className="shrink-0 text-amber-500" />
+          <span>Driver signal paused: Last location update was {minutesSinceUpdate} minutes ago. Showing last known coordinates.</span>
+        </div>
+      )}
 
       {/* Fallback Banner if no coordinates are available */}
       {!hasAnyCoords && (

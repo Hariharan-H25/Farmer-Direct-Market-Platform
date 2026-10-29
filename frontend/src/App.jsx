@@ -99,6 +99,7 @@ function App() {
             <Route path="/login/customer" element={<CustomerLogin />} />
             <Route path="/login/farmer" element={<FarmerLogin />} />
             <Route path="/login/delivery" element={<DeliveryLogin />} />
+            <Route path="/delivery-login" element={<DeliveryLogin />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-otp" element={<VerifyOTP />} />
 

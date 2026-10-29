@@ -82,7 +82,7 @@ export const register = async (req, res) => {
     
     // If user already exists and is fully verified, reject duplicate registration
     if (existingUser && existingUser.isVerified) {
-      return res.status(400).json({ message: "User already exists with this email address. Please login instead." });
+      return res.status(400).json({ message: "An account already exists with this email address. Please login instead." });
     }
 
     if (confirmPassword && password !== confirmPassword) {
@@ -99,45 +99,36 @@ export const register = async (req, res) => {
       userRole = 'buyer';
     }
 
-    let userRecord;
-    if (existingUser && !existingUser.isVerified) {
-      // Re-registering unverified account: update existing record
-      existingUser.password = hashedPassword;
-      existingUser.name = `${firstName.trim()} ${lastName.trim()}`;
-      existingUser.role = userRole;
-      existingUser.phone = phone ? phone.trim() : existingUser.phone;
-      existingUser.address = address ? address.trim() : existingUser.address;
-      existingUser.farmName = userRole === 'farmer' ? (farmName || existingUser.farmName) : '';
-      if (userRole === 'farmer' && (district || state)) {
-        existingUser.location = { district: district || '', state: state || '' };
-      }
-      if (req.file) existingUser.produceImage = req.file.path;
-      userRecord = await existingUser.save();
-    } else {
-      userRecord = await User.create({ 
-        email: normalizedEmail, 
-        password: hashedPassword, 
-        name: `${firstName.trim()} ${lastName.trim()}`, 
-        role: userRole,
-        phone: phone ? phone.trim() : (req.body.mobile || '9999999999'),
-        address: address ? address.trim() : '',
-        farmName: userRole === 'farmer' ? (farmName || '') : '',
-        location: userRole === 'farmer' ? { district: district || '', state: state || '' } : {},
-        produceImage: req.file ? req.file.path : '',
-        isVerified: process.env.NODE_ENV === 'test', // in test runner, auto-verify for supertest compatibility
-        isAuthorized: true,
-        accountStatus: 'Active'
-      });
-    }
+    const pendingUserData = {
+      email: normalizedEmail,
+      password: hashedPassword,
+      name: `${firstName.trim()} ${lastName.trim()}`,
+      role: userRole,
+      phone: phone ? phone.trim() : (req.body.mobile || '9999999999'),
+      address: address ? address.trim() : '',
+      farmName: userRole === 'farmer' ? (farmName || '') : '',
+      location: userRole === 'farmer' ? { district: district || '', state: state || '' } : {},
+      produceImage: req.file ? req.file.path : '',
+      isVerified: false,
+      isAuthorized: true,
+      accountStatus: 'Pending'
+    };
 
-    // In automated jest test environment, return token immediately
+    // In automated jest test environment, create user directly for supertest compatibility
     if (process.env.NODE_ENV === 'test') {
+      let testUserRecord = existingUser;
+      if (testUserRecord) {
+        Object.assign(testUserRecord, pendingUserData, { isVerified: true, accountStatus: 'Active' });
+        await testUserRecord.save();
+      } else {
+        testUserRecord = await User.create({ ...pendingUserData, isVerified: true, accountStatus: 'Active' });
+      }
       const token = jwt.sign(
-        { email: userRecord.email, id: userRecord._id, role: userRecord.role, isAuthorized: true },
+        { email: testUserRecord.email, id: testUserRecord._id, role: testUserRecord.role, isAuthorized: true },
         process.env.JWT_SECRET || 'test',
         { expiresIn: "24h" }
       );
-      return res.status(201).json({ result: userRecord, token, message: "Registration successful." });
+      return res.status(201).json({ result: testUserRecord, token, message: "Registration successful." });
     }
 
     // Generate cryptographically secure 6-digit OTP
@@ -148,22 +139,23 @@ export const register = async (req, res) => {
     // Invalidate any previous OTPs for this email
     await OTP.deleteMany({ email: normalizedEmail, purpose: 'registration' });
 
-    // Store new hashed OTP
+    // Store new hashed OTP along with pending registration payload
     await OTP.create({
       email: normalizedEmail,
       otpHash: hashedOtp,
       purpose: 'registration',
+      pendingUserData: pendingUserData,
       expiresAt: expiresAt,
       resendCooldownUntil: new Date(Date.now() + 60 * 1000)
     });
 
-    // Attempt real email dispatch via configured provider
+    // Attempt real email dispatch via configured provider (NEVER exposed in responses/logs)
     const sendResult = await sendVerificationOTPEmail(normalizedEmail, rawOtp, firstName.trim());
 
     if (!sendResult.success) {
       logger.warn(`OTP email delivery failed for ${normalizedEmail}: ${sendResult.message}`);
       return res.status(503).json({
-        message: sendResult.message || "Failed to send verification code to your email. Please contact administrator or configure server email settings.",
+        message: sendResult.message || "Failed to send verification code to your email. Server email provider is not configured or failed to deliver.",
         requiresOtp: false,
         email: normalizedEmail,
         error: sendResult.error
@@ -191,18 +183,16 @@ export const verifyOTP = async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail });
-    if (!user) {
-      return res.status(404).json({ message: "No account found matching this email address." });
-    }
 
-    if (user.isVerified) {
+    // Check if user is already verified
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser && existingUser.isVerified) {
       const token = jwt.sign(
-        { email: user.email, id: user._id, role: user.role, isAuthorized: user.isAuthorized },
+        { email: existingUser.email, id: existingUser._id, role: existingUser.role, isAuthorized: existingUser.isAuthorized },
         process.env.JWT_SECRET || 'test',
         { expiresIn: "24h" }
       );
-      return res.status(200).json({ message: "Account is already verified. Logging in...", result: user, token });
+      return res.status(200).json({ message: "Account is already verified. Logging in...", result: existingUser, token });
     }
 
     const otpRecord = await OTP.findOne({ 
@@ -211,7 +201,7 @@ export const verifyOTP = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     if (!otpRecord) {
-      return res.status(400).json({ message: "No active verification code found. Please request a new code." });
+      return res.status(400).json({ message: "No active verification code found for this email. Please request a new code or register again." });
     }
 
     if (new Date() > new Date(otpRecord.expiresAt)) {
@@ -237,25 +227,48 @@ export const verifyOTP = async (req, res) => {
     // Code verified: invalidate OTP to prevent replay attacks
     await OTP.deleteMany({ email: normalizedEmail });
 
-    // Activate user account
-    user.isVerified = true;
-    user.accountStatus = 'Active';
-    const updatedUser = await user.save();
+    // CREATE or ACTIVATE user account only NOW after successful email OTP verification
+    let verifiedUser = existingUser;
+    if (verifiedUser) {
+      verifiedUser.isVerified = true;
+      verifiedUser.accountStatus = 'Active';
+      if (otpRecord.pendingUserData) {
+        if (otpRecord.pendingUserData.name) verifiedUser.name = otpRecord.pendingUserData.name;
+        if (otpRecord.pendingUserData.phone) verifiedUser.phone = otpRecord.pendingUserData.phone;
+        if (otpRecord.pendingUserData.role) verifiedUser.role = otpRecord.pendingUserData.role;
+        if (otpRecord.pendingUserData.address) verifiedUser.address = otpRecord.pendingUserData.address;
+        if (otpRecord.pendingUserData.farmName) verifiedUser.farmName = otpRecord.pendingUserData.farmName;
+        if (otpRecord.pendingUserData.location) verifiedUser.location = otpRecord.pendingUserData.location;
+      }
+      await verifiedUser.save();
+    } else if (otpRecord.pendingUserData) {
+      verifiedUser = await User.create({
+        ...otpRecord.pendingUserData,
+        isVerified: true,
+        isAuthorized: true,
+        accountStatus: 'Active'
+      });
+    } else {
+      return res.status(400).json({ message: "Registration session data expired. Please register again." });
+    }
 
     const token = jwt.sign(
       { 
-        email: updatedUser.email, 
-        id: updatedUser._id, 
-        role: updatedUser.role,
-        isAuthorized: updatedUser.isAuthorized 
+        email: verifiedUser.email, 
+        id: verifiedUser._id, 
+        role: verifiedUser.role, 
+        isAuthorized: verifiedUser.isAuthorized 
       }, 
       process.env.JWT_SECRET || 'test', 
       { expiresIn: "24h" }
     );
 
+    const userObj = verifiedUser.toObject();
+    delete userObj.password;
+
     res.status(200).json({ 
-      message: "Account verified successfully! Welcome to FarmConnect.", 
-      result: updatedUser, 
+      message: "Account verified and activated successfully! Welcome to FarmConnect.", 
+      result: userObj, 
       token 
     });
   } catch (error) {
@@ -274,11 +287,7 @@ export const resendOTP = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
-    if (!user) {
-      return res.status(404).json({ message: "No account found matching this email address." });
-    }
-
-    if (user.isVerified) {
+    if (user && user.isVerified) {
       return res.status(400).json({ message: "This account is already verified. You can log in directly." });
     }
 
@@ -286,6 +295,10 @@ export const resendOTP = async (req, res) => {
       email: normalizedEmail, 
       purpose: 'registration' 
     }).sort({ createdAt: -1 });
+
+    if (!user && !existingOtp) {
+      return res.status(404).json({ message: "No registration request found for this email address. Please sign up first." });
+    }
 
     if (existingOtp && existingOtp.resendCooldownUntil && new Date() < new Date(existingOtp.resendCooldownUntil)) {
       const waitSeconds = Math.ceil((new Date(existingOtp.resendCooldownUntil) - new Date()) / 1000);
@@ -298,6 +311,7 @@ export const resendOTP = async (req, res) => {
     const rawOtp = crypto.randomInt(100000, 1000000).toString();
     const hashedOtp = await bcrypt.hash(rawOtp, 10);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const preservedPendingData = existingOtp?.pendingUserData || (user ? user.toObject() : null);
 
     await OTP.deleteMany({ email: normalizedEmail, purpose: 'registration' });
 
@@ -305,21 +319,23 @@ export const resendOTP = async (req, res) => {
       email: normalizedEmail,
       otpHash: hashedOtp,
       purpose: 'registration',
+      pendingUserData: preservedPendingData,
       expiresAt: expiresAt,
       resendCooldownUntil: new Date(Date.now() + 60 * 1000)
     });
 
-    const sendResult = await sendVerificationOTPEmail(normalizedEmail, rawOtp, user.name);
+    const recipientName = user?.name || preservedPendingData?.name || 'User';
+    const sendResult = await sendVerificationOTPEmail(normalizedEmail, rawOtp, recipientName);
 
     if (!sendResult.success) {
       return res.status(503).json({
-        message: sendResult.message || "Failed to deliver verification code to your email address. Please try again later.",
+        message: sendResult.message || "Failed to deliver verification code to your email address. Please check server email credentials.",
         error: sendResult.error
       });
     }
 
     res.status(200).json({ 
-      message: "A fresh verification code has been sent to your email address."
+      message: "A fresh verification code has been dispatched to your email address."
     });
   } catch (error) {
     logger.error('Resend OTP error: ' + error.message);

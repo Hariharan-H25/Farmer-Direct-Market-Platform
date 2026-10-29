@@ -157,24 +157,33 @@ export const updateLiveLocation = async (req, res) => {
       return res.status(403).json({ message: "Access denied. Only the assigned delivery partner can update location." });
     }
 
+    // Only allow location broadcasts when the order is in an active delivery state
+    const activeDeliveryStatuses = ['Pickup Pending', 'Picked Up', 'Out for Delivery'];
+    if (!activeDeliveryStatuses.includes(order.deliveryStatus)) {
+      return res.status(400).json({ 
+        message: `Location updates are only allowed for active deliveries. Current status is "${order.deliveryStatus}".` 
+      });
+    }
+
     // Determine target coordinates for ETA calculation
     let destLat = null;
     let destLng = null;
 
-    if (order.deliveryStatus === 'Pickup Pending' && order.pickupLocation && order.pickupLocation.lat) {
+    if (order.deliveryStatus === 'Pickup Pending' && order.pickupLocation?.lat && order.pickupLocation?.lng) {
       destLat = order.pickupLocation.lat;
       destLng = order.pickupLocation.lng;
-    } else if (order.shippingAddress?.location?.lat) {
+    } else if (order.shippingAddress?.location?.lat && order.shippingAddress?.location?.lng) {
       destLat = order.shippingAddress.location.lat;
       destLng = order.shippingAddress.location.lng;
     }
 
     let estimatedArrivalMinutes = order.estimatedArrivalMinutes;
     if (destLat && destLng) {
-      const distanceKm = calculateDistanceKm(lat, lng, destLat, destLng);
-      if (distanceKm !== null) {
-        // Average speed: 25 km/h for local agricultural delivery routes
-        const calculatedMinutes = Math.max(1, Math.round((distanceKm / 25) * 60));
+      const directDistanceKm = calculateDistanceKm(lat, lng, destLat, destLng);
+      if (directDistanceKm !== null) {
+        // Account for real road curvature (~1.25x direct distance) and local road speeds (~28 km/h)
+        const roadDistanceKm = directDistanceKm * 1.25;
+        const calculatedMinutes = Math.max(1, Math.round((roadDistanceKm / 28) * 60));
         estimatedArrivalMinutes = calculatedMinutes;
       }
     }

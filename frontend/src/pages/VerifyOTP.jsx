@@ -83,11 +83,9 @@ const VerifyOTP = () => {
       const { data } = await resendOTP({ email: email.trim() });
       setSuccessMsg(data.message || t('otpSentNotice'));
       setCooldown(60);
-      setCanResend(false);
     } catch (err) {
       if (err.response?.status === 429 && err.response.data?.waitSeconds) {
         setCooldown(err.response.data.waitSeconds);
-        setCanResend(false);
         setError(err.response.data.message);
       } else {
         setError(err.response?.data?.message || "Failed to resend verification code. Please try again later.");

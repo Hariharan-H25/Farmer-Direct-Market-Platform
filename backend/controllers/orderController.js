@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from '../services/emailService.js';
+import { geocodeAddress } from '../utils/geocoder.js';
 
 export const createOrder = async (req, res) => {
   const { 
@@ -97,6 +98,14 @@ export const createOrder = async (req, res) => {
     if (primaryFarmerId) {
       const farmerUser = await User.findById(primaryFarmerId).select('name farmName phone address location');
       if (farmerUser) {
+        // Geocode farmer pickup location coordinates reliably
+        const farmerCoords = await geocodeAddress({
+          location: farmerUser.location?.coordinates,
+          district: farmerUser.location?.district,
+          state: farmerUser.location?.state,
+          address: farmerUser.address
+        });
+
         pickupLocation = {
           farmName: farmerUser.farmName || `${farmerUser.name}'s Farm`,
           farmerName: farmerUser.name || 'Farmer',
@@ -104,13 +113,22 @@ export const createOrder = async (req, res) => {
           address: farmerUser.address || `${farmerUser.location?.district || 'Erode'}, ${farmerUser.location?.state || 'Tamil Nadu'}`,
           district: farmerUser.location?.district || 'Erode',
           state: farmerUser.location?.state || 'Tamil Nadu',
-          lat: farmerUser.location?.coordinates?.lat || 11.3410,
-          lng: farmerUser.location?.coordinates?.lng || 77.7172
+          lat: farmerCoords.lat,
+          lng: farmerCoords.lng
         };
       }
     }
 
-    // Format shipping address with fallback coordinates if location wasn't provided
+    // Resolve customer shipping location coordinates reliably via geocoder
+    const customerCoords = await geocodeAddress({
+      location: shippingAddress?.location,
+      city: shippingAddress?.city,
+      district: shippingAddress?.district,
+      state: shippingAddress?.state,
+      pincode: shippingAddress?.pincode,
+      address: shippingAddress?.address || `${shippingAddress?.houseFlat || ''} ${shippingAddress?.streetArea || ''}`
+    });
+
     const formattedShippingAddress = {
       recipientName: shippingAddress?.recipientName || 'Customer',
       mobileNumber: shippingAddress?.mobileNumber || shippingAddress?.phone || '9876543210',
@@ -122,12 +140,9 @@ export const createOrder = async (req, res) => {
       pincode: shippingAddress?.pincode || '638001',
       landmark: shippingAddress?.landmark || '',
       deliveryInstructions: shippingAddress?.deliveryInstructions || '',
-      location: (shippingAddress?.location?.lat && shippingAddress?.location?.lng) ? {
-        lat: Number(shippingAddress.location.lat),
-        lng: Number(shippingAddress.location.lng)
-      } : {
-        lat: 11.3500 + (Math.random() * 0.02 - 0.01),
-        lng: 77.7250 + (Math.random() * 0.02 - 0.01)
+      location: {
+        lat: customerCoords.lat,
+        lng: customerCoords.lng
       },
       address: shippingAddress?.address || `${shippingAddress?.houseFlat || ''} ${shippingAddress?.streetArea || ''}`.trim() || 'Customer Address',
       phone: shippingAddress?.phone || shippingAddress?.mobileNumber || '9876543210'

@@ -17,6 +17,10 @@ const otpSchema = new mongoose.Schema({
     enum: ['registration', 'login', 'reset'], 
     default: 'registration' 
   },
+  pendingUserData: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
   attempts: { 
     type: Number, 
     default: 0 

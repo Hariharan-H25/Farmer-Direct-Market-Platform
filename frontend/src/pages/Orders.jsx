@@ -83,6 +83,29 @@ const Orders = () => {
     };
   }, [user, userId, navigate]);
 
+  // Resilient real-time polling for live tracking (guarantees real-time updates on Vercel serverless)
+  useEffect(() => {
+    if (!trackingOrder?.orderId) return;
+
+    // Stop polling once delivery completes or cancels
+    if (trackingOrder.deliveryStatus === 'Delivered' || trackingOrder.deliveryStatus === 'Cancelled') {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await fetchOrderTracking(trackingOrder.orderId);
+        if (data) {
+          setTrackingOrder(prev => (prev ? { ...prev, ...data } : data));
+        }
+      } catch (err) {
+        console.debug('Tracking poll error:', err?.message);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [trackingOrder?.orderId, trackingOrder?.deliveryStatus]);
+
   const handleTrackOrder = async (orderId) => {
     setLoadingTracking(true);
     try {

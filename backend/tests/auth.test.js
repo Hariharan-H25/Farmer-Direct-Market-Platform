@@ -3,6 +3,15 @@ import { app, server } from '../server.js';
 import mongoose from 'mongoose';
 
 describe('Auth API Endpoints', () => {
+  beforeAll(async () => {
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 15000,
+        socketTimeoutMS: 45000,
+      });
+    }
+  }, 30000);
+
   afterAll(async () => {
     await mongoose.connection.close();
     server.close();
