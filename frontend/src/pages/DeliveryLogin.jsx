@@ -133,11 +133,11 @@ const DeliveryLogin = () => {
 
         {/* Switch Portals */}
         <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-4 text-[11px] text-gray-500 dark:text-gray-400">
-          <Link to="/login/customer" className="hover:text-sky-600 dark:hover:text-sky-400 font-medium">
+          <Link to="/user-login" className="hover:text-sky-600 dark:hover:text-sky-400 font-medium">
             🛒 {t('customerLogin')}
           </Link>
           <span>&bull;</span>
-          <Link to="/login/farmer" className="hover:text-sky-600 dark:hover:text-sky-400 font-medium">
+          <Link to="/farmer-login" className="hover:text-sky-600 dark:hover:text-sky-400 font-medium">
             🌾 {t('farmerLogin')}
           </Link>
           <span>&bull;</span>

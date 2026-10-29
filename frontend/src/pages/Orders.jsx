@@ -3,26 +3,27 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Package, Clock, CheckCircle2, Truck, ShoppingBag, FileText, ArrowRight, X, Radio, Phone, MapPin } from 'lucide-react';
 import { fetchBuyerOrders, fetchOrderInvoice, fetchOrderTracking } from '../api';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import DeliveryMap from '../components/DeliveryMap';
 import socket from '../socket';
 
 const Orders = () => {
   const { t } = useLanguage();
+  const { userResult, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   // Live Tracking Modal State
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [loadingTracking, setLoadingTracking] = useState(false);
 
-  const profile = localStorage.getItem('profile');
-  const user = profile ? JSON.parse(profile) : null;
-  const userId = user?.result?._id || user?.id;
+  const userId = userResult?._id || userResult?.id;
 
   useEffect(() => {
-    if (!user) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
@@ -30,10 +31,13 @@ const Orders = () => {
     const loadOrders = async () => {
       try {
         setLoading(true);
+        setFetchError('');
         const { data } = await fetchBuyerOrders();
         setOrders(data || []);
       } catch (err) {
         console.error('Failed to fetch buyer orders:', err);
+        setFetchError(err.response?.data?.message || 'Unable to load orders at this time.');
+        setOrders([]);
       } finally {
         setLoading(false);
       }
@@ -81,7 +85,7 @@ const Orders = () => {
       socket.off('delivery_location_update', handleLocationUpdate);
       socket.off('order_status_updated', handleStatusUpdate);
     };
-  }, [user, userId, navigate]);
+  }, [userId, isAuthenticated, navigate]);
 
   // Resilient real-time polling for live tracking (guarantees real-time updates on Vercel serverless)
   useEffect(() => {
@@ -200,7 +204,7 @@ const Orders = () => {
     }
   };
 
-  if (!user) {
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -223,6 +227,18 @@ const Orders = () => {
           Continue Shopping <ArrowRight size={15} />
         </Link>
       </div>
+
+      {fetchError && (
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 p-4 rounded-2xl mb-6 text-sm flex items-center justify-between">
+          <span>{fetchError}</span>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="text-xs font-bold underline cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Orders List */}
       {loading ? (

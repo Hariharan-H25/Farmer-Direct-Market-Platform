@@ -10,6 +10,7 @@ import {
   updateProfile, 
   getSavedAddresses, 
   addSavedAddress, 
+  updateSavedAddress,
   deleteSavedAddress, 
   getWishlist, 
   addToWishlist, 
@@ -38,9 +39,10 @@ router.post('/logout', logout);
 router.get('/profile', authenticateUser, getProfile);
 router.put('/profile', authenticateUser, updateProfile);
 
-// Saved Delivery Addresses (Swiggy/Zomato style)
+// Saved Delivery Addresses (Swiggy/Zomato style with strict ownership)
 router.get('/addresses', authenticateUser, getSavedAddresses);
 router.post('/addresses', authenticateUser, addSavedAddress);
+router.put('/addresses/:addressId', authenticateUser, updateSavedAddress);
 router.delete('/addresses/:addressId', authenticateUser, deleteSavedAddress);
 
 // Wishlist endpoints

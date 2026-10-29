@@ -13,8 +13,12 @@ import {
   addSavedAddress 
 } from '../api';
 
+import { useAuth } from '../context/AuthContext';
+import AddressMapPicker from '../components/AddressMapPicker';
+
 const Cart = () => {
   const { cart, addToCart, removeFromCart, clearCart, totalItems } = useCart();
+  const { userResult, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
@@ -24,17 +28,16 @@ const Cart = () => {
   const [invoiceData, setInvoiceData] = useState(null);
   const [loadingInvoice, setLoadingInvoice] = useState(false);
 
-  // Swiggy/Zomato Style Delivery Address State
+  // Swiggy/Zomato Style Delivery Address State (Strict User Isolation)
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showAddAddressForm, setShowAddAddressForm] = useState(false);
-  const [locatingGps, setLocatingGps] = useState(false);
   const [addressError, setAddressError] = useState('');
 
   // Payment Method State
   const [paymentMethod, setPaymentMethod] = useState('COD'); // 'COD' | 'Online'
 
-  // New Address Form
+  // New Address Form with Pinpoint GPS
   const [newAddress, setNewAddress] = useState({
     recipientName: '',
     mobileNumber: '',
@@ -52,91 +55,87 @@ const Cart = () => {
   });
 
   const navigate = useNavigate();
-  const profile = localStorage.getItem('profile');
-  const user = profile ? JSON.parse(profile) : null;
 
-  // Load saved addresses on mount
+  // Load saved addresses strictly for the current authenticated user session
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated || !userResult) {
+      setSavedAddresses([]);
+      setSelectedAddressId(null);
+      return;
+    }
 
-    // Set default recipient details from user profile
+    // Set recipient defaults from authenticated profile
     setNewAddress(prev => ({
       ...prev,
-      recipientName: user.result?.name || user.name || '',
-      mobileNumber: user.result?.phone || user.phone || ''
+      recipientName: userResult?.name || '',
+      mobileNumber: userResult?.phone || ''
     }));
 
     const loadAddresses = async () => {
       try {
         const { data } = await fetchSavedAddresses();
-        setSavedAddresses(data || []);
-        if (data && data.length > 0) {
-          const defaultAddr = data.find(a => a.isDefault) || data[0];
+        const userAddrs = Array.isArray(data) ? data : [];
+        setSavedAddresses(userAddrs);
+        if (userAddrs.length > 0) {
+          const defaultAddr = userAddrs.find(a => a.isDefault) || userAddrs[0];
           setSelectedAddressId(defaultAddr._id);
+          setShowAddAddressForm(false);
         } else {
           setShowAddAddressForm(true);
         }
       } catch (err) {
         console.error("Failed to fetch saved addresses:", err);
+        setSavedAddresses([]);
         setShowAddAddressForm(true);
       }
     };
 
     loadAddresses();
-  }, []);
+
+    // Event listener to immediately clear all address state upon account logout
+    const handleAccountLogout = () => {
+      setSavedAddresses([]);
+      setSelectedAddressId(null);
+      setShowAddAddressForm(true);
+      setNewAddress({
+        recipientName: '',
+        mobileNumber: '',
+        houseFlat: '',
+        streetArea: '',
+        city: '',
+        district: '',
+        state: 'Tamil Nadu',
+        pincode: '',
+        landmark: '',
+        deliveryInstructions: '',
+        addressType: 'Home',
+        saveForFuture: true,
+        location: null
+      });
+    };
+
+    window.addEventListener('fc:logout', handleAccountLogout);
+    return () => {
+      window.removeEventListener('fc:logout', handleAccountLogout);
+    };
+  }, [userResult?._id, isAuthenticated]);
 
   const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   // Explicit Delivery Pricing Rule: Free above ₹500, else ₹50
   const deliveryFee = subtotal >= 500 ? 0 : 50;
   const total = subtotal + deliveryFee;
 
-  // Use Current Location via Geolocation + Reverse Geocoding
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    setLocatingGps(true);
-    setAddressError('');
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        setNewAddress(prev => ({
-          ...prev,
-          location: { lat: latitude, lng: longitude }
-        }));
-
-        try {
-          // OpenStreetMap Reverse Geocoding
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await response.json();
-          if (data && data.address) {
-            const addr = data.address;
-            setNewAddress(prev => ({
-              ...prev,
-              streetArea: addr.suburb || addr.neighbourhood || addr.road || prev.streetArea,
-              city: addr.city || addr.town || addr.village || prev.city,
-              district: addr.state_district || addr.county || prev.district,
-              state: addr.state || prev.state,
-              pincode: addr.postcode ? addr.postcode.replace(/\D/g, '').slice(0, 6) : prev.pincode
-            }));
-          }
-        } catch (geoErr) {
-          console.warn("Reverse geocode fetch skipped or failed:", geoErr);
-        } finally {
-          setLocatingGps(false);
-        }
-      },
-      (err) => {
-        setLocatingGps(false);
-        setAddressError(`GPS Location access denied or unavailable: ${err.message}`);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+  // Handle map pin confirmation from AddressMapPicker
+  const handleMapLocationConfirmed = (coords, addrData, isConfirmed) => {
+    setNewAddress(prev => ({
+      ...prev,
+      location: coords,
+      streetArea: addrData?.streetArea || prev.streetArea,
+      city: addrData?.city || prev.city,
+      district: addrData?.district || prev.district,
+      state: addrData?.state || prev.state,
+      pincode: addrData?.pincode || prev.pincode
+    }));
   };
 
   const getSelectedAddressObject = () => {
@@ -147,7 +146,7 @@ const Cart = () => {
   };
 
   const handleCheckout = async () => {
-    if (!profile) {
+    if (!isAuthenticated) {
       alert('Please log in to place an order.');
       navigate('/login');
       return;
@@ -175,11 +174,16 @@ const Cart = () => {
       // Save address to user profile if requested
       if (showAddAddressForm && targetAddress.saveForFuture) {
         try {
-          await addSavedAddress(targetAddress);
+          const { data: updatedAddrs } = await addSavedAddress(targetAddress);
+          if (Array.isArray(updatedAddrs)) {
+            setSavedAddresses(updatedAddrs);
+          }
         } catch {
           // ignore save error, continue with checkout
         }
       }
+
+      const selectedAddr = !showAddAddressForm ? savedAddresses.find(a => a._id === selectedAddressId) : null;
 
       const orderPayload = {
         items: cart.map(item => ({
@@ -189,7 +193,9 @@ const Cart = () => {
           farmer: item.farmer
         })),
         totalAmount: total,
+        addressId: selectedAddr?._id || undefined,
         shippingAddress: {
+          addressId: selectedAddr?._id || undefined,
           recipientName: targetAddress.recipientName.trim(),
           mobileNumber: targetAddress.mobileNumber.trim(),
           houseFlat: targetAddress.houseFlat.trim(),
@@ -431,62 +437,70 @@ const Cart = () => {
 
             {/* Saved Addresses Radio Grid */}
             {!showAddAddressForm && savedAddresses.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {savedAddresses.map((addr) => (
-                  <div
-                    key={addr._id}
-                    onClick={() => setSelectedAddressId(addr._id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${
-                      selectedAddressId === addr._id
-                        ? 'border-primary ring-2 ring-primary/20 bg-emerald-50/20 dark:border-emerald-500 dark:bg-emerald-950/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-primary dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
-                        {addr.addressType === 'Work' ? <Briefcase size={10} /> : <Home size={10} />}
-                        {addr.addressType || 'Home'}
-                      </span>
-                      {selectedAddressId === addr._id && (
-                        <CheckCircle size={16} className="text-primary dark:text-emerald-400" />
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {savedAddresses.map((addr) => (
+                    <div
+                      key={addr._id}
+                      onClick={() => setSelectedAddressId(addr._id)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${
+                        selectedAddressId === addr._id
+                          ? 'border-primary ring-2 ring-primary/20 bg-emerald-50/20 dark:border-emerald-500 dark:bg-emerald-950/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-primary dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
+                          {addr.addressType === 'Work' ? <Briefcase size={10} /> : <Home size={10} />}
+                          {addr.addressType || 'Home'}
+                        </span>
+                        {selectedAddressId === addr._id && (
+                          <CheckCircle size={16} className="text-primary dark:text-emerald-400" />
+                        )}
+                      </div>
+
+                      <h4 className="font-bold text-xs text-gray-900 dark:text-white truncate">
+                        {addr.recipientName} ({addr.mobileNumber})
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        {addr.houseFlat}, {addr.streetArea}, {addr.city} - {addr.pincode}
+                      </p>
+                      {addr.deliveryInstructions && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 italic">
+                          Note: {addr.deliveryInstructions}
+                        </p>
                       )}
                     </div>
+                  ))}
+                </div>
 
-                    <h4 className="font-bold text-xs text-gray-900 dark:text-white truncate">
-                      {addr.recipientName} ({addr.mobileNumber})
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                      {addr.houseFlat}, {addr.streetArea}, {addr.city} - {addr.pincode}
-                    </p>
-                    {addr.deliveryInstructions && (
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 italic">
-                        Note: {addr.deliveryInstructions}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                {/* Show map preview for selected address */}
+                {selectedAddressId && (() => {
+                  const currentAddr = savedAddresses.find(a => a._id === selectedAddressId);
+                  if (currentAddr?.location?.lat && currentAddr?.location?.lng) {
+                    return (
+                      <div className="pt-2">
+                        <AddressMapPicker
+                          initialLocation={currentAddr.location}
+                          readOnly={true}
+                          savedAddressLabel={`${currentAddr.houseFlat}, ${currentAddr.city}`}
+                        />
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
             )}
 
-            {/* "+ Add New Delivery Address" Form */}
+            {/* "+ Add New Delivery Address" Form with Pinpoint Map Picker */}
             {showAddAddressForm && (
               <div className="space-y-4 pt-1 animate-in fade-in duration-200">
-                {/* Geolocation Button */}
-                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/60 p-3 rounded-2xl border border-gray-200 dark:border-gray-700">
-                  <div className="text-xs">
-                    <span className="font-bold text-gray-800 dark:text-gray-200 block">Detect Exact Coordinates</span>
-                    <span className="text-gray-400 text-[11px]">Enables pinpoint live delivery tracking</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleUseCurrentLocation}
-                    disabled={locatingGps}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    {locatingGps ? <Loader2 size={13} className="animate-spin" /> : <Navigation size={13} />}
-                    {locatingGps ? 'Locating...' : 'Use Current Location'}
-                  </button>
-                </div>
+                {/* Interactive Leaflet Pinpoint Map Picker */}
+                <AddressMapPicker
+                  initialLocation={newAddress.location}
+                  onLocationConfirmed={handleMapLocationConfirmed}
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>

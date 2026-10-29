@@ -22,6 +22,16 @@ export const createOrder = async (req, res) => {
     return res.status(400).json({ message: "Order must contain at least one product item." });
   }
 
+  // Address Ownership Verification: If addressId is supplied, verify it belongs to authenticated user
+  const clientAddressId = req.body.addressId || shippingAddress?.addressId || shippingAddress?._id;
+  if (clientAddressId && mongoose.Types.ObjectId.isValid(clientAddressId)) {
+    const customerUser = await User.findById(req.userId);
+    const ownsAddress = customerUser?.savedAddresses?.some(a => a._id.toString() === clientAddressId.toString());
+    if (!ownsAddress) {
+      return res.status(403).json({ message: "Security violation: Selected address does not belong to your account." });
+    }
+  }
+
   // Track successfully deducted items to rollback if any subsequent item in the cart fails
   const deductedItems = [];
   const formattedItems = [];
@@ -255,6 +265,16 @@ export const getOrderById = async (req, res) => {
       .populate('items.farmer', 'name farmName location phone email');
 
     if (!order) return res.status(404).json({ message: "Order not found." });
+
+    // Strict ownership verification: only customer, assigned delivery partner, item farmer, or admin
+    const isCustomer = order.customer && (order.customer._id?.toString() === req.userId || order.customer.toString() === req.userId);
+    const isDelivery = order.deliveryPerson && order.deliveryPerson.toString() === req.userId;
+    const isFarmer = order.items && order.items.some(item => (item.farmer?._id || item.farmer)?.toString() === req.userId);
+    const isAdmin = req.userRole === 'admin';
+
+    if (!isCustomer && !isDelivery && !isFarmer && !isAdmin) {
+      return res.status(403).json({ message: "Access denied. You do not have permission to view this order." });
+    }
 
     res.status(200).json(order);
   } catch (error) {
@@ -548,8 +568,13 @@ export const getOrderInvoice = async (req, res) => {
 
     if (!order) return res.status(404).json({ message: "Order not found." });
 
-    if (order.customer?._id?.toString() !== req.userId && req.userRole !== 'admin' && req.userRole !== 'farmer') {
-      return res.status(403).json({ message: "Access denied." });
+    // Strict ownership: only customer, item farmer, or admin
+    const isCustomer = order.customer && (order.customer._id?.toString() === req.userId || order.customer.toString() === req.userId);
+    const isFarmer = order.items && order.items.some(item => (item.farmer?._id || item.farmer)?.toString() === req.userId);
+    const isAdmin = req.userRole === 'admin';
+
+    if (!isCustomer && !isFarmer && !isAdmin) {
+      return res.status(403).json({ message: "Access denied. You are not authorized to view this invoice." });
     }
 
     const invoiceData = {

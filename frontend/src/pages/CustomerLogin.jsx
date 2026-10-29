@@ -147,11 +147,11 @@ const CustomerLogin = () => {
           </p>
 
           <div className="flex items-center justify-center gap-4 text-[11px] pt-1">
-            <Link to="/login/farmer" className="hover:text-primary dark:hover:text-emerald-400 font-medium">
+            <Link to="/farmer-login" className="hover:text-primary dark:hover:text-emerald-400 font-medium">
               🌾 {t('farmerLogin')}
             </Link>
             <span>&bull;</span>
-            <Link to="/login/delivery" className="hover:text-primary dark:hover:text-emerald-400 font-medium">
+            <Link to="/delivery-login" className="hover:text-primary dark:hover:text-emerald-400 font-medium">
               🛵 {t('deliveryLogin')}
             </Link>
             <span>&bull;</span>

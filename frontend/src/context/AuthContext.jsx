@@ -44,6 +44,9 @@ export const AuthProvider = ({ children }) => {
     if (!authData) return;
     localStorage.setItem('profile', JSON.stringify(authData));
     setUser(authData);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fc:login', { detail: authData }));
+    }
   }, []);
 
   const logout = useCallback(async () => {
@@ -52,8 +55,18 @@ export const AuthProvider = ({ children }) => {
     } catch {
       // Clear local session regardless of server state
     }
+    // Deep cache purge across user sessions to prevent any cross-account data leakage
     localStorage.removeItem('profile');
+    localStorage.removeItem('cart');
+    localStorage.removeItem('fc_selected_address');
+    localStorage.removeItem('fc_saved_addresses');
+    try {
+      sessionStorage.clear();
+    } catch (_) {}
     setUser(null);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fc:logout'));
+    }
   }, []);
 
   const updateUser = useCallback((updatedUserData) => {

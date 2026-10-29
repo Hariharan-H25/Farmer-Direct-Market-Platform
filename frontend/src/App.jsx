@@ -94,12 +94,15 @@ function App() {
             {/* Priority 1: Landing / Root Route */}
             <Route path="/" element={<RootRoute />} />
 
-            {/* Separate Role-Based Authentication Routes */}
+            {/* 3 Separate Role-Based Authentication Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/user-login" element={<CustomerLogin />} />
+            <Route path="/farmer-login" element={<FarmerLogin />} />
+            <Route path="/delivery-login" element={<DeliveryLogin />} />
+            {/* Aliases for backwards compatibility */}
             <Route path="/login/customer" element={<CustomerLogin />} />
             <Route path="/login/farmer" element={<FarmerLogin />} />
             <Route path="/login/delivery" element={<DeliveryLogin />} />
-            <Route path="/delivery-login" element={<DeliveryLogin />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-otp" element={<VerifyOTP />} />
 

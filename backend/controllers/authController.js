@@ -495,12 +495,73 @@ export const deleteSavedAddress = async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    user.savedAddresses = (user.savedAddresses || []).filter(a => a._id.toString() !== addressId);
+    const addressIndex = (user.savedAddresses || []).findIndex(a => a._id.toString() === addressId);
+    if (addressIndex === -1) {
+      return res.status(404).json({ message: "Address not found in your saved addresses." });
+    }
+
+    user.savedAddresses.splice(addressIndex, 1);
     await user.save();
 
     res.status(200).json(user.savedAddresses);
   } catch (error) {
     res.status(500).json({ message: "Failed to delete saved address." });
+  }
+};
+
+export const updateSavedAddress = async (req, res) => {
+  const { addressId } = req.params;
+  const { 
+    recipientName, 
+    mobileNumber, 
+    houseFlat, 
+    streetArea, 
+    city, 
+    district, 
+    state, 
+    pincode, 
+    landmark, 
+    deliveryInstructions, 
+    location, 
+    addressType,
+    isDefault 
+  } = req.body;
+
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const addrIndex = (user.savedAddresses || []).findIndex(a => a._id.toString() === addressId);
+    if (addrIndex === -1) {
+      return res.status(404).json({ message: "Address not found in your saved addresses." });
+    }
+
+    if (isDefault) {
+      user.savedAddresses.forEach(a => a.isDefault = false);
+    }
+
+    const addr = user.savedAddresses[addrIndex];
+    if (recipientName) addr.recipientName = recipientName.trim();
+    if (mobileNumber) addr.mobileNumber = mobileNumber.toString().replace(/\D/g, '').slice(-10);
+    if (houseFlat) addr.houseFlat = houseFlat.trim();
+    if (streetArea) addr.streetArea = streetArea.trim();
+    if (city) addr.city = city.trim();
+    if (district) addr.district = district.trim();
+    if (state) addr.state = state.trim();
+    if (pincode) addr.pincode = pincode.toString().trim();
+    if (landmark !== undefined) addr.landmark = landmark ? landmark.trim() : '';
+    if (deliveryInstructions !== undefined) addr.deliveryInstructions = deliveryInstructions ? deliveryInstructions.trim() : '';
+    if (location && location.lat && location.lng) {
+      addr.location = { lat: Number(location.lat), lng: Number(location.lng) };
+    }
+    if (addressType) addr.addressType = addressType;
+    if (isDefault !== undefined) addr.isDefault = Boolean(isDefault);
+
+    await user.save();
+    res.status(200).json(user.savedAddresses);
+  } catch (error) {
+    logger.error('Update address error: ' + error.message);
+    res.status(500).json({ message: "Failed to update saved address." });
   }
 };
 

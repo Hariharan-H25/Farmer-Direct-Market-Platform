@@ -147,11 +147,11 @@ const FarmerLogin = () => {
           </p>
 
           <div className="flex items-center justify-center gap-4 text-[11px] pt-1">
-            <Link to="/login/customer" className="hover:text-emerald-600 dark:hover:text-emerald-400 font-medium">
+            <Link to="/user-login" className="hover:text-emerald-600 dark:hover:text-emerald-400 font-medium">
               🛒 {t('customerLogin')}
             </Link>
             <span>&bull;</span>
-            <Link to="/login/delivery" className="hover:text-emerald-600 dark:hover:text-emerald-400 font-medium">
+            <Link to="/delivery-login" className="hover:text-emerald-600 dark:hover:text-emerald-400 font-medium">
               🛵 {t('deliveryLogin')}
             </Link>
             <span>&bull;</span>

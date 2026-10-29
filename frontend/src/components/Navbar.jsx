@@ -263,7 +263,7 @@ const Navbar = () => {
                         </div>
 
                         <Link
-                          to="/login/customer"
+                          to="/user-login"
                           onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center justify-between px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-colors font-medium"
                         >
@@ -275,7 +275,7 @@ const Navbar = () => {
                         </Link>
 
                         <Link
-                          to="/login/farmer"
+                          to="/farmer-login"
                           onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center justify-between px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-colors font-medium"
                         >
@@ -287,7 +287,7 @@ const Navbar = () => {
                         </Link>
 
                         <Link
-                          to="/login/delivery"
+                          to="/delivery-login"
                           onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center justify-between px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-xl transition-colors font-medium"
                         >

@@ -17,10 +17,18 @@ import { authenticateUser, authorizeBuyer, authorizeFarmer, authorizeAdmin } fro
 
 const router = express.Router();
 
-// Role-specific order listing routes
+// Role-specific order listing routes with strict data isolation
 router.get('/my-orders', authenticateUser, authorizeBuyer, getBuyerOrders);
 router.get('/farmer-orders', authenticateUser, authorizeFarmer, getFarmerOrders);
-router.get('/', authenticateUser, fetchAllOrders);
+router.get('/', authenticateUser, (req, res) => {
+  if (req.userRole === 'admin') {
+    return fetchAllOrders(req, res);
+  } else if (req.userRole === 'farmer') {
+    return getFarmerOrders(req, res);
+  } else {
+    return getBuyerOrders(req, res);
+  }
+});
 
 // Sales CSV export route (Farmers and Admin)
 router.get('/export/csv', authenticateUser, exportOrdersCSV);

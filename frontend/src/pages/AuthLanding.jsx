@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Sprout, ShieldCheck, Truck, Users, ArrowRight, Lock, 
   Mail, Phone, User, Home, Loader2, AlertCircle, CheckCircle2,
-  Sparkles, Award, MapPin
+  Sparkles, Award, MapPin, ShoppingBag
 } from 'lucide-react';
 import { signIn, signUp } from '../api';
 import { useLanguage } from '../context/LanguageContext';
@@ -214,8 +214,40 @@ const AuthLanding = () => {
           <div className="lg:col-span-5 w-full max-w-md mx-auto">
             <div className="bg-slate-900/90 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative">
               
-              {/* Tabs: Login vs Register */}
-              <div className="flex p-1 bg-white/10 rounded-2xl mb-6">
+              {/* 3 Separate Login Portals Selector Cards */}
+              <div className="mb-5 space-y-2 text-left">
+                <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400 block">
+                  Choose Login Portal
+                </span>
+                <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-950/70 rounded-2xl border border-white/10">
+                  <Link
+                    to="/user-login"
+                    className="p-2 sm:p-2.5 rounded-xl text-center transition-all bg-emerald-600/25 border border-emerald-500/40 hover:bg-emerald-600/35 text-white flex flex-col items-center gap-1 cursor-pointer"
+                  >
+                    <ShoppingBag size={18} className="text-emerald-400" />
+                    <span className="text-[11px] font-bold">User</span>
+                  </Link>
+
+                  <Link
+                    to="/farmer-login"
+                    className="p-2 sm:p-2.5 rounded-xl text-center transition-all bg-white/5 border border-white/10 hover:border-green-500/40 hover:bg-green-950/40 text-gray-300 hover:text-white flex flex-col items-center gap-1 cursor-pointer"
+                  >
+                    <Sprout size={18} className="text-green-400" />
+                    <span className="text-[11px] font-bold">Farmer</span>
+                  </Link>
+
+                  <Link
+                    to="/delivery-login"
+                    className="p-2 sm:p-2.5 rounded-xl text-center transition-all bg-white/5 border border-white/10 hover:border-sky-500/40 hover:bg-sky-950/40 text-gray-300 hover:text-white flex flex-col items-center gap-1 cursor-pointer"
+                  >
+                    <Truck size={18} className="text-sky-400" />
+                    <span className="text-[11px] font-bold">Delivery Boy</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Tabs: Sign In vs Register */}
+              <div className="flex p-1 bg-white/10 rounded-2xl mb-5">
                 <button
                   type="button"
                   onClick={() => { setAuthMode('login'); setLoginError(''); setRegisterError(''); }}
@@ -243,9 +275,9 @@ const AuthLanding = () => {
               {/* ─── TAB 1: LOGIN FORM ───────────────────────────── */}
               {authMode === 'login' && (
                 <form onSubmit={handleLoginSubmit} className="space-y-4 animate-in fade-in duration-300">
-                  <div className="text-left mb-4">
-                    <h2 className="text-xl font-black text-white">Welcome Back</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">Enter your email and password to access FarmConnect.</p>
+                  <div className="text-left mb-3">
+                    <h2 className="text-xl font-black text-white">User Login Portal</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">Sign in to your customer or producer account.</p>
                   </div>
 
                   {loginError && (

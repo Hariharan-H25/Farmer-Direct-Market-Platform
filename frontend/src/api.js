@@ -54,9 +54,10 @@ export const signOut = () => API.post('/auth/logout');
 export const fetchProfile = () => API.get('/auth/profile');
 export const updateProfile = (updatedData) => API.put('/auth/profile', updatedData);
 
-// Saved Addresses (Swiggy/Zomato style)
+// Saved Addresses (Swiggy/Zomato style with validated server ownership)
 export const fetchSavedAddresses = () => API.get('/auth/addresses');
 export const addSavedAddress = (addressData) => API.post('/auth/addresses', addressData);
+export const updateSavedAddress = (addressId, addressData) => API.put(`/auth/addresses/${addressId}`, addressData);
 export const deleteSavedAddress = (addressId) => API.delete(`/auth/addresses/${addressId}`);
 
 export const fetchProducts = (params) => API.get('/products', { params });
