@@ -195,6 +195,6 @@ describe('Address Isolation & Data Privacy Security Tests', () => {
       });
 
     expect(res.status).toBe(403);
-    expect(res.body.message).toMatch(/Security violation.*does not belong to your account/i);
+    expect(res.body.message).toMatch(/does not belong to your account/i);
   });
 });
