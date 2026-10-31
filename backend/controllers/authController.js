@@ -6,6 +6,14 @@ import OTP from '../models/OTP.js';
 import { sendVerificationOTPEmail } from '../services/emailService.js';
 import logger from '../utils/logger.js';
 
+const getJwtSecret = () => process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test' : null);
+
+const signAuthToken = (payload) => {
+  const secret = getJwtSecret();
+  if (!secret) throw new Error('Authentication signing is unavailable: JWT_SECRET is not configured.');
+  return jwt.sign(payload, secret, { expiresIn: '24h', algorithm: 'HS256' });
+};
+
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -44,16 +52,12 @@ export const login = async (req, res) => {
       }
     }
 
-    const token = jwt.sign(
-      { 
+    const token = signAuthToken({ 
         email: existingUser.email, 
         id: existingUser._id, 
         role: existingUser.role,
         isAuthorized: existingUser.isAuthorized 
-      }, 
-      process.env.JWT_SECRET || 'test', 
-      { expiresIn: "24h" }
-    );
+      });
 
     res.status(200).json({ result: existingUser, token });
   } catch (error) {
@@ -123,11 +127,7 @@ export const register = async (req, res) => {
       } else {
         testUserRecord = await User.create({ ...pendingUserData, isVerified: true, accountStatus: 'Active' });
       }
-      const token = jwt.sign(
-        { email: testUserRecord.email, id: testUserRecord._id, role: testUserRecord.role, isAuthorized: true },
-        process.env.JWT_SECRET || 'test',
-        { expiresIn: "24h" }
-      );
+      const token = signAuthToken({ email: testUserRecord.email, id: testUserRecord._id, role: testUserRecord.role, isAuthorized: true });
       return res.status(201).json({ result: testUserRecord, token, message: "Registration successful." });
     }
 
@@ -153,12 +153,13 @@ export const register = async (req, res) => {
     const sendResult = await sendVerificationOTPEmail(normalizedEmail, rawOtp, firstName.trim());
 
     if (!sendResult.success) {
+      await OTP.deleteMany({ email: normalizedEmail, purpose: 'registration' });
       logger.warn(`OTP email delivery failed for ${normalizedEmail}: ${sendResult.message}`);
       return res.status(503).json({
         message: sendResult.message || "Failed to send verification code to your email. Server email provider is not configured or failed to deliver.",
         requiresOtp: false,
         email: normalizedEmail,
-        error: sendResult.error
+        error: sendResult.error === 'PROVIDER_NOT_CONFIGURED' ? 'EMAIL_PROVIDER_NOT_CONFIGURED' : 'EMAIL_DELIVERY_FAILED'
       });
     }
 
@@ -187,11 +188,7 @@ export const verifyOTP = async (req, res) => {
     // Check if user is already verified
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser && existingUser.isVerified) {
-      const token = jwt.sign(
-        { email: existingUser.email, id: existingUser._id, role: existingUser.role, isAuthorized: existingUser.isAuthorized },
-        process.env.JWT_SECRET || 'test',
-        { expiresIn: "24h" }
-      );
+      const token = signAuthToken({ email: existingUser.email, id: existingUser._id, role: existingUser.role, isAuthorized: existingUser.isAuthorized });
       return res.status(200).json({ message: "Account is already verified. Logging in...", result: existingUser, token });
     }
 
@@ -252,16 +249,12 @@ export const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "Registration session data expired. Please register again." });
     }
 
-    const token = jwt.sign(
-      { 
+    const token = signAuthToken({ 
         email: verifiedUser.email, 
         id: verifiedUser._id, 
         role: verifiedUser.role, 
         isAuthorized: verifiedUser.isAuthorized 
-      }, 
-      process.env.JWT_SECRET || 'test', 
-      { expiresIn: "24h" }
-    );
+      });
 
     const userObj = verifiedUser.toObject();
     delete userObj.password;
