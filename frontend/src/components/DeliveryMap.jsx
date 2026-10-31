@@ -5,22 +5,6 @@ import { Clock, ShieldCheck, Navigation, AlertCircle, MapPin, Radio, WifiOff } f
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
-// Helper to compute direct distance in kilometers using Haversine formula
-const calculateDirectDistanceKm = (lat1, lon1, lat2, lon2) => {
-  if (typeof lat1 !== 'number' || typeof lon1 !== 'number' || typeof lat2 !== 'number' || typeof lon2 !== 'number') {
-    return null;
-  }
-  const toRad = deg => (deg * Math.PI) / 180;
-  const R = 6371; // Earth radius in km
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c * 10) / 10;
-};
-
 // Custom Marker Icons for Leaflet
 const createCustomIcon = (bgColor, emoji) => {
   return L.divIcon({
@@ -192,7 +176,13 @@ const DeliveryMap = ({
     }
 
     // 4. Real Road Routing via OSRM with fast timeout and reliable fallback
-    if (hasPickup && hasDelivery) {
+    const routeOrigin = hasLive ? liveLocation : pickupLocation;
+    const routeDestination = (deliveryStatus === 'Pickup Pending' && hasPickup) ? pickupLocation : deliveryLocation;
+    const hasRouteEndpoints = !!routeOrigin && !!routeDestination &&
+      typeof routeOrigin.lat === 'number' && typeof routeOrigin.lng === 'number' &&
+      typeof routeDestination.lat === 'number' && typeof routeDestination.lng === 'number';
+
+    if (hasRouteEndpoints) {
       setRouteLoading(true);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
@@ -226,17 +216,19 @@ const DeliveryMap = ({
               map.fitBounds(L.latLngBounds(lineCoords), { padding: [40, 40] });
             } catch (_) {}
           } else {
-            fallbackPolyline(map, activeBounds, pickupLocation, deliveryLocation);
+            fallbackPolyline(map, activeBounds);
           }
         })
         .catch(() => {
           clearTimeout(timeoutId);
-          fallbackPolyline(map, activeBounds, pickupLocation, deliveryLocation);
+          fallbackPolyline(map, activeBounds);
         })
         .finally(() => {
           setRouteLoading(false);
         });
     } else if (activeBounds.length > 0) {
+      if (polylineRef.current) { map.removeLayer(polylineRef.current); polylineRef.current = null; }
+      setRouteInfo({ distanceKm: null, durationMins: null });
       try {
         if (activeBounds.length === 1) {
           map.setView(activeBounds[0], 14);
@@ -274,16 +266,9 @@ const DeliveryMap = ({
     };
   }, []);
 
-  const fallbackPolyline = (map, bounds, pLoc, dLoc) => {
-    // Compute distance and ETA even when online routing service is unavailable
-    if (pLoc && dLoc) {
-      const directKm = calculateDirectDistanceKm(pLoc.lat, pLoc.lng, dLoc.lat, dLoc.lng);
-      if (directKm !== null) {
-        const roadDistance = Math.round(directKm * 1.25 * 10) / 10;
-        const duration = Math.max(1, Math.round((roadDistance / 30) * 60));
-        setRouteInfo({ distanceKm: roadDistance, durationMins: duration });
-      }
-    }
+  const fallbackPolyline = (map, bounds) => {
+    // If routing is unavailable, draw only a dashed visual connector; never invent road distance or ETA.
+    setRouteInfo({ distanceKm: null, durationMins: null });
 
     if (bounds.length >= 2) {
       if (polylineRef.current) {
@@ -302,7 +287,7 @@ const DeliveryMap = ({
     }
   };
 
-  const displayEta = estimatedArrivalMinutes || routeInfo.durationMins;
+  const displayEta = routeInfo.durationMins || estimatedArrivalMinutes;
 
   return (
     <div className="w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 shadow-md">
@@ -325,6 +310,8 @@ const DeliveryMap = ({
             {t('coordinatesNotice')}
           </div>
         )}
+
+        {routeLoading && <span className="text-gray-300">Calculating road route…</span>}
 
         {routeInfo.distanceKm && (
           <div className="flex items-center gap-1 text-emerald-300 bg-slate-800 px-2.5 py-1 rounded-lg">

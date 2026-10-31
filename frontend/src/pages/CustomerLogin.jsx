@@ -23,6 +23,10 @@ const CustomerLogin = () => {
     try {
       const { data } = await signIn(formData);
       const serverRole = data?.result?.role || 'customer';
+      if (serverRole !== 'buyer' && serverRole !== 'customer' && serverRole !== 'admin') {
+        setError(`Access denied. This account has role "${serverRole}". Customer credentials are required.`);
+        return;
+      }
 
       login(data);
 

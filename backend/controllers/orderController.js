@@ -22,14 +22,22 @@ export const createOrder = async (req, res) => {
     return res.status(400).json({ message: "Order must contain at least one product item." });
   }
 
-  // Address Ownership Verification: If addressId is supplied, verify it belongs to authenticated user
-  const clientAddressId = req.body.addressId || shippingAddress?.addressId || shippingAddress?._id;
-  if (clientAddressId && mongoose.Types.ObjectId.isValid(clientAddressId)) {
-    const customerUser = await User.findById(req.userId);
-    const ownsAddress = customerUser?.savedAddresses?.some(a => a._id.toString() === clientAddressId.toString());
-    if (!ownsAddress) {
-      return res.status(403).json({ message: "Security violation: Selected address does not belong to your account." });
+  // Resolve saved addresses only from the authenticated customer's own profile.
+  let verifiedShippingAddress = shippingAddress;
+  const clientAddressId = req.body.addressId || verifiedShippingAddress?.addressId || verifiedShippingAddress?._id;
+  if (clientAddressId) {
+    if (!mongoose.Types.ObjectId.isValid(clientAddressId)) {
+      return res.status(400).json({ message: "Invalid saved delivery address." });
     }
+    const customerUser = await User.findById(req.userId).select('savedAddresses');
+    const ownedAddress = customerUser?.savedAddresses?.find(a => a._id.toString() === clientAddressId.toString());
+    if (!ownedAddress) {
+      return res.status(403).json({ message: "Selected address does not belong to your account." });
+    }
+    verifiedShippingAddress = ownedAddress.toObject ? ownedAddress.toObject() : ownedAddress;
+  }
+  if (!verifiedShippingAddress || typeof verifiedShippingAddress !== 'object') {
+    return res.status(400).json({ message: "A delivery address is required." });
   }
 
   // Track successfully deducted items to rollback if any subsequent item in the cart fails
@@ -131,31 +139,31 @@ export const createOrder = async (req, res) => {
 
     // Resolve customer shipping location coordinates reliably via geocoder
     const customerCoords = await geocodeAddress({
-      location: shippingAddress?.location,
-      city: shippingAddress?.city,
-      district: shippingAddress?.district,
-      state: shippingAddress?.state,
-      pincode: shippingAddress?.pincode,
-      address: shippingAddress?.address || `${shippingAddress?.houseFlat || ''} ${shippingAddress?.streetArea || ''}`
+      location: verifiedShippingAddress?.location,
+      city: verifiedShippingAddress?.city,
+      district: verifiedShippingAddress?.district,
+      state: verifiedShippingAddress?.state,
+      pincode: verifiedShippingAddress?.pincode,
+      address: verifiedShippingAddress?.address || `${verifiedShippingAddress?.houseFlat || ''} ${verifiedShippingAddress?.streetArea || ''}`
     });
 
     const formattedShippingAddress = {
-      recipientName: shippingAddress?.recipientName || 'Customer',
-      mobileNumber: shippingAddress?.mobileNumber || shippingAddress?.phone || '9876543210',
-      houseFlat: shippingAddress?.houseFlat || '',
-      streetArea: shippingAddress?.streetArea || '',
-      city: shippingAddress?.city || 'City',
-      district: shippingAddress?.district || '',
-      state: shippingAddress?.state || 'Tamil Nadu',
-      pincode: shippingAddress?.pincode || '638001',
-      landmark: shippingAddress?.landmark || '',
-      deliveryInstructions: shippingAddress?.deliveryInstructions || '',
+      recipientName: verifiedShippingAddress?.recipientName || 'Customer',
+      mobileNumber: verifiedShippingAddress?.mobileNumber || verifiedShippingAddress?.phone || '9876543210',
+      houseFlat: verifiedShippingAddress?.houseFlat || '',
+      streetArea: verifiedShippingAddress?.streetArea || '',
+      city: verifiedShippingAddress?.city || 'City',
+      district: verifiedShippingAddress?.district || '',
+      state: verifiedShippingAddress?.state || 'Tamil Nadu',
+      pincode: verifiedShippingAddress?.pincode || '638001',
+      landmark: verifiedShippingAddress?.landmark || '',
+      deliveryInstructions: verifiedShippingAddress?.deliveryInstructions || '',
       location: {
         lat: customerCoords.lat,
         lng: customerCoords.lng
       },
-      address: shippingAddress?.address || `${shippingAddress?.houseFlat || ''} ${shippingAddress?.streetArea || ''}`.trim() || 'Customer Address',
-      phone: shippingAddress?.phone || shippingAddress?.mobileNumber || '9876543210'
+      address: verifiedShippingAddress?.address || `${verifiedShippingAddress?.houseFlat || ''} ${verifiedShippingAddress?.streetArea || ''}`.trim() || 'Customer Address',
+      phone: verifiedShippingAddress?.phone || verifiedShippingAddress?.mobileNumber || '9876543210'
     };
 
     const newOrder = new Order({

@@ -23,6 +23,10 @@ const FarmerLogin = () => {
     try {
       const { data } = await signIn(formData);
       const serverRole = data?.result?.role || 'customer';
+      if (serverRole !== 'farmer' && serverRole !== 'admin') {
+        setError(`Access denied. This account has role "${serverRole}". Farmer credentials are required.`);
+        return;
+      }
 
       login(data);
 

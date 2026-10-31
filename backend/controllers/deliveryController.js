@@ -165,28 +165,8 @@ export const updateLiveLocation = async (req, res) => {
       });
     }
 
-    // Determine target coordinates for ETA calculation
-    let destLat = null;
-    let destLng = null;
-
-    if (order.deliveryStatus === 'Pickup Pending' && order.pickupLocation?.lat && order.pickupLocation?.lng) {
-      destLat = order.pickupLocation.lat;
-      destLng = order.pickupLocation.lng;
-    } else if (order.shippingAddress?.location?.lat && order.shippingAddress?.location?.lng) {
-      destLat = order.shippingAddress.location.lat;
-      destLng = order.shippingAddress.location.lng;
-    }
-
-    let estimatedArrivalMinutes = order.estimatedArrivalMinutes;
-    if (destLat && destLng) {
-      const directDistanceKm = calculateDistanceKm(lat, lng, destLat, destLng);
-      if (directDistanceKm !== null) {
-        // Account for real road curvature (~1.25x direct distance) and local road speeds (~28 km/h)
-        const roadDistanceKm = directDistanceKm * 1.25;
-        const calculatedMinutes = Math.max(1, Math.round((roadDistanceKm / 28) * 60));
-        estimatedArrivalMinutes = calculatedMinutes;
-      }
-    }
+    // ETA is supplied by the road-routing client; do not publish a straight-line speed guess.
+    const estimatedArrivalMinutes = null;
 
     order.liveLocation = {
       lat,
