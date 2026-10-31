@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 
+const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
 // Configure transporter using env variables
 const createTransporter = () => {
   // 1. SendGrid SMTP
@@ -148,7 +150,7 @@ export const sendVerificationOTPEmail = async (toEmail, otp, recipientName = 'Us
       </div>
 
       <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px 20px; text-align: center; margin-bottom: 24px;">
-        <p style="font-size: 14px; color: #166534; font-weight: 600; margin: 0 0 8px 0;">Hello ${recipientName},</p>
+        <p style="font-size: 14px; color: #166534; font-weight: 600; margin: 0 0 8px 0;">Hello ${escapeHtml(recipientName)},</p>
         <p style="font-size: 13px; color: #374151; margin: 0 0 16px 0;">Your FarmConnect registration verification code is:</p>
         <div style="display: inline-block; background: #ffffff; border: 2px dashed #0F5A32; border-radius: 12px; padding: 12px 36px; letter-spacing: 8px; font-size: 32px; font-weight: 800; color: #0F5A32; font-family: monospace;">
           ${otp}
@@ -175,11 +177,11 @@ export const sendVerificationOTPEmail = async (toEmail, otp, recipientName = 'Us
     console.log(`✉️ Verification OTP successfully accepted by provider for delivery to ${toEmail} (MessageId: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error(`❌ Verification OTP delivery failed to ${toEmail}: ${error.message}`);
+    console.error('Verification OTP delivery failed. Provider rejected or could not deliver the message.');
     return { 
       success: false, 
       error: 'DELIVERY_FAILED', 
-      message: `Failed to deliver verification code: ${error.message}` 
+      message: 'Email provider could not deliver the verification code. Check provider credentials and verified sender configuration.' 
     };
   }
 };
