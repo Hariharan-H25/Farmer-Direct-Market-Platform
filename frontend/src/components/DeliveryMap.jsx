@@ -221,12 +221,14 @@ const DeliveryMap = ({
         })
         .catch(() => {
           clearTimeout(timeoutId);
-          fallbackPolyline(map, activeBounds, pickupLocation, deliveryLocation);
+          fallbackPolyline(map, activeBounds);
         })
         .finally(() => {
           setRouteLoading(false);
         });
     } else if (activeBounds.length > 0) {
+      if (polylineRef.current) { map.removeLayer(polylineRef.current); polylineRef.current = null; }
+      setRouteInfo({ distanceKm: null, durationMins: null });
       try {
         if (activeBounds.length === 1) {
           map.setView(activeBounds[0], 14);
