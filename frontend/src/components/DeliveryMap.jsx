@@ -192,7 +192,13 @@ const DeliveryMap = ({
     }
 
     // 4. Real Road Routing via OSRM with fast timeout and reliable fallback
-    if (hasPickup && hasDelivery) {
+    const routeOrigin = hasLive ? liveLocation : pickupLocation;
+    const routeDestination = (deliveryStatus === 'Pickup Pending' && hasPickup) ? pickupLocation : deliveryLocation;
+    const hasRouteEndpoints = !!routeOrigin && !!routeDestination &&
+      typeof routeOrigin.lat === 'number' && typeof routeOrigin.lng === 'number' &&
+      typeof routeDestination.lat === 'number' && typeof routeDestination.lng === 'number';
+
+    if (hasRouteEndpoints) {
       setRouteLoading(true);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
@@ -226,7 +232,7 @@ const DeliveryMap = ({
               map.fitBounds(L.latLngBounds(lineCoords), { padding: [40, 40] });
             } catch (_) {}
           } else {
-            fallbackPolyline(map, activeBounds, pickupLocation, deliveryLocation);
+            fallbackPolyline(map, activeBounds, null, null);
           }
         })
         .catch(() => {
@@ -275,15 +281,8 @@ const DeliveryMap = ({
   }, []);
 
   const fallbackPolyline = (map, bounds, pLoc, dLoc) => {
-    // Compute distance and ETA even when online routing service is unavailable
-    if (pLoc && dLoc) {
-      const directKm = calculateDirectDistanceKm(pLoc.lat, pLoc.lng, dLoc.lat, dLoc.lng);
-      if (directKm !== null) {
-        const roadDistance = Math.round(directKm * 1.25 * 10) / 10;
-        const duration = Math.max(1, Math.round((roadDistance / 30) * 60));
-        setRouteInfo({ distanceKm: roadDistance, durationMins: duration });
-      }
-    }
+    // If routing is unavailable, draw only a dashed visual connector; never invent road distance or ETA.
+    setRouteInfo({ distanceKm: null, durationMins: null });
 
     if (bounds.length >= 2) {
       if (polylineRef.current) {
@@ -302,7 +301,7 @@ const DeliveryMap = ({
     }
   };
 
-  const displayEta = estimatedArrivalMinutes || routeInfo.durationMins;
+  const displayEta = routeInfo.durationMins || estimatedArrivalMinutes;
 
   return (
     <div className="w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 shadow-md">
