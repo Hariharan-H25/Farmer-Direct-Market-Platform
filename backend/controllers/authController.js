@@ -321,9 +321,11 @@ export const resendOTP = async (req, res) => {
     const sendResult = await sendVerificationOTPEmail(normalizedEmail, rawOtp, recipientName);
 
     if (!sendResult.success) {
+      await OTP.deleteMany({ email: normalizedEmail, purpose: 'registration' });
+      logger.warn(`OTP resend failed for ${normalizedEmail}: ${sendResult.error || 'EMAIL_DELIVERY_FAILED'}`);
       return res.status(503).json({
-        message: sendResult.message || "Failed to deliver verification code to your email address. Please check server email credentials.",
-        error: sendResult.error
+        message: 'Email provider could not send the verification code. Please try again later or contact support.',
+        error: sendResult.error === 'PROVIDER_NOT_CONFIGURED' ? 'EMAIL_PROVIDER_NOT_CONFIGURED' : 'EMAIL_DELIVERY_FAILED'
       });
     }
 
