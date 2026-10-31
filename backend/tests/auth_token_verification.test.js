@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { jest } from '@jest/globals';
 import { authenticateUser } from '../middleware/auth.js';
 
 const makeResponse = () => {
